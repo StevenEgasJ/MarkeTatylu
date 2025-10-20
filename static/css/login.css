@@ -1,0 +1,90 @@
+/* Login page specific styles */
+.login-main {
+    background: linear-gradient(135deg, #5e422e 0%, #6F4E37 100%);
+    background-image: url('../img/Fondo-main.webp');
+    background-size: cover;
+    background-position: center;
+    background-blend-mode: multiply;
+    background-attachment: fixed;
+    min-height: 100vh;
+    padding-top: 2rem;
+    padding-bottom: 2rem;
+}
+
+.login-container {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    border-radius: 15px;
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    max-width: 450px;
+    width: 100%;
+    margin: 0 auto;
+}
+
+.login-title {
+    color: #5e422e;
+    font-weight: bold;
+    text-align: center;
+}
+
+.form-control {
+    border-radius: 10px;
+    border: 2px solid #e9ecef;
+    padding: 12px 15px;
+    font-size: 16px;
+    transition: all 0.3s ease;
+}
+
+.form-control:focus {
+    border-color: #5e422e;
+    box-shadow: 0 0 0 0.2rem rgba(94, 66, 46, 0.25);
+}
+
+.form-label {
+    color: #5e422e;
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+
+/* Dark mode adjustments */
+.dark-mode .login-container {
+    background: rgba(30, 30, 30, 0.95);
+    color: #f5f1dc;
+}
+
+.dark-mode .login-title {
+    color: #f5f1dc;
+}
+
+.dark-mode .form-label {
+    color: #f5f1dc;
+}
+
+.dark-mode .form-control {
+    background-color: rgba(245, 241, 220, 0.1);
+    border-color: rgba(245, 241, 220, 0.3);
+    color: #f5f1dc;
+}
+
+.dark-mode .form-control:focus {
+    border-color: #f5f1dc;
+    box-shadow: 0 0 0 0.2rem rgba(245, 241, 220, 0.25);
+}
+
+.dark-mode .form-control::placeholder {
+    color: rgba(245, 241, 220, 0.6);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .login-main {
+        padding-top: 1rem;
+        padding-bottom: 1rem;
+    }
+    
+    .login-container {
+        margin: 1rem;
+        max-width: none;
+    }
+}

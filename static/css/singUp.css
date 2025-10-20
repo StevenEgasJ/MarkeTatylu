@@ -1,0 +1,135 @@
+/* Registration page specific styles */
+.register-main {
+    background: linear-gradient(135deg, #5e422e 0%, #6F4E37 100%);
+    background-image: url('../img/Fondo-main.webp');
+    background-size: cover;
+    background-position: center;
+    background-blend-mode: multiply;
+    background-attachment: fixed;
+    min-height: 100vh;
+    padding-top: 2rem;
+    padding-bottom: 2rem;
+}
+
+.register-container {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    border-radius: 15px;
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    max-width: 600px;
+    width: 100%;
+    margin: 0 auto;
+}
+
+.register-title {
+    color: #5e422e;
+    font-weight: bold;
+    text-align: center;
+}
+
+.form-control {
+    border-radius: 10px;
+    border: 2px solid #e9ecef;
+    padding: 12px 15px;
+    font-size: 16px;
+    transition: all 0.3s ease;
+}
+
+.form-control:focus {
+    border-color: #5e422e;
+    box-shadow: 0 0 0 0.2rem rgba(94, 66, 46, 0.25);
+}
+
+.form-label {
+    color: #5e422e;
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+
+.input-group-text {
+    background-color: #f8f9fa;
+    border-color: #e9ecef;
+    color: #5e422e;
+    font-weight: 600;
+}
+
+/* Dark mode adjustments */
+.dark-mode .register-container {
+    background: rgba(30, 30, 30, 0.95);
+    color: #f5f1dc;
+}
+
+.dark-mode .register-title {
+    color: #f5f1dc;
+}
+
+.dark-mode .form-label {
+    color: #f5f1dc;
+}
+
+.dark-mode .form-control {
+    background-color: rgba(245, 241, 220, 0.1);
+    border-color: rgba(245, 241, 220, 0.3);
+    color: #f5f1dc;
+}
+
+.dark-mode .form-control:focus {
+    border-color: #f5f1dc;
+    box-shadow: 0 0 0 0.2rem rgba(245, 241, 220, 0.25);
+}
+
+.dark-mode .form-control::placeholder {
+    color: rgba(245, 241, 220, 0.6);
+}
+
+.dark-mode .input-group-text {
+    background-color: rgba(245, 241, 220, 0.1);
+    border-color: rgba(245, 241, 220, 0.3);
+    color: #f5f1dc;
+}
+
+/* Button styles */
+.btn-primary {
+    background-color: #5e422e;
+    border-color: #5e422e;
+    padding: 12px 24px;
+    border-radius: 10px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.btn-primary:hover {
+    background-color: #4a3423;
+    border-color: #4a3423;
+    transform: translateY(-1px);
+}
+
+.btn-secondary {
+    background-color: #6c757d;
+    border-color: #6c757d;
+    padding: 8px 16px;
+    border-radius: 8px;
+}
+
+.btn-secondary:hover {
+    background-color: #545b62;
+    border-color: #545b62;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .register-main {
+        padding-top: 1rem;
+        padding-bottom: 1rem;
+    }
+    
+    .register-container {
+        margin: 1rem;
+        max-width: none;
+    }
+    
+    .row .col-md-6 {
+        margin-bottom: 1rem;
+    }
+}

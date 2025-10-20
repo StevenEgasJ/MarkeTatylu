@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inicializar Datos de Administrador</title>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+</head>
+<body>
+    <div style="padding: 20px; text-align: center;">
+        <h2>Inicializar Datos de Ejemplo</h2>
+        <button onclick="initializeData()" style="padding: 10px 20px; font-size: 16px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer;">
+            Crear Datos de Ejemplo
+        </button>
+        <button onclick="testPDFDownload()" style="padding: 10px 20px; font-size: 16px; background: #28a745; color: white; border: none; border-radius: 5px; cursor: pointer; margin-left: 10px;">
+            Probar Descarga PDF
+        </button>
+        <div id="status" style="margin-top: 20px;"></div>
+    </div>
+
+    <script>
+        function initializeData() {
+            // Crear usuarios de ejemplo
+            const usuarios = [
+                {
+                    nombre: 'Juan',
+                    apellido: 'Pérez',
+                    email: 'juan.perez@email.com',
+                    password: '123456',
+                    cedula: '1234567890',
+                    telefono: '0987654321',
+                    foto: 'static/img/logo.png',
+                    fechaRegistro: '2024-01-15T10:30:00Z'
+                },
+                {
+                    nombre: 'María',
+                    apellido: 'González',
+                    email: 'maria.gonzalez@email.com',
+                    password: '123456',
+                    cedula: '0987654321',
+                    telefono: '0912345678',
+                    foto: 'static/img/logo.png',
+                    fechaRegistro: '2024-01-20T14:15:00Z'
+                },
+                {
+                    nombre: 'Carlos',
+                    apellido: 'Rodríguez',
+                    email: 'carlos.rodriguez@email.com',
+                    password: '123456',
+                    cedula: '1122334455',
+                    telefono: '0998877665',
+                    foto: 'static/img/logo.png',
+                    fechaRegistro: '2024-02-01T09:45:00Z'
+                }
+            ];
+
+            // Crear pedidos de ejemplo
+            const pedidos = [
+                {
+                    id: 'ORD-001',
+                    numeroOrden: 'ORD-001',
+                    cliente: {
+                        nombre: 'Juan',
+                        apellido: 'Pérez',
+                        email: 'juan.perez@email.com',
+                        telefono: '0987654321'
+                    },
+                    productos: [
+                        {
+                            id: 1,
+                            nombre: 'Refrigeradora LG 350L',
+                            precio: 850.00,
+                            cantidad: 1,
+                            subtotal: 850.00
+                        },
+                        {
+                            id: 2,
+                            nombre: 'Microondas Samsung 20L',
+                            precio: 180.00,
+                            cantidad: 1,
+                            subtotal: 180.00
+                        }
+                    ],
+                    totales: {
+                        subtotal: 1030.00,
+                        iva: 123.60,
+                        envio: 15.00,
+                        total: 1168.60
+                    },
+                    entrega: {
+                        direccion: 'Av. Amazonas 123, Quito',
+                        ciudad: 'Quito',
+                        provincia: 'Pichincha'
+                    },
+                    pago: {
+                        metodo: 'tarjeta_credito'
+                    },
+                    estado: 'procesando',
+                    fecha: '2024-02-15T16:30:00Z'
+                },
+                {
+                    id: 'ORD-002',
+                    numeroOrden: 'ORD-002',
+                    cliente: {
+                        nombre: 'María',
+                        apellido: 'González',
+                        email: 'maria.gonzalez@email.com',
+                        telefono: '0912345678'
+                    },
+                    productos: [
+                        {
+                            id: 3,
+                            nombre: 'Lavadora Whirlpool 15kg',
+                            precio: 650.00,
+                            cantidad: 1,
+                            subtotal: 650.00
+                        }
+                    ],
+                    totales: {
+                        subtotal: 650.00,
+                        iva: 78.00,
+                        envio: 20.00,
+                        total: 748.00
+                    },
+                    entrega: {
+                        direccion: 'Calle 10 de Agosto 456, Guayaquil',
+                        ciudad: 'Guayaquil',
+                        provincia: 'Guayas'
+                    },
+                    pago: {
+                        metodo: 'transferencia'
+                    },
+                    estado: 'enviado',
+                    fecha: '2024-02-20T11:15:00Z'
+                },
+                {
+                    id: 'ORD-003',
+                    numeroOrden: 'ORD-003',
+                    cliente: {
+                        nombre: 'Carlos',
+                        apellido: 'Rodríguez',
+                        email: 'carlos.rodriguez@email.com',
+                        telefono: '0998877665'
+                    },
+                    productos: [
+                        {
+                            id: 4,
+                            nombre: 'Televisor Smart TV 55"',
+                            precio: 720.00,
+                            cantidad: 1,
+                            subtotal: 720.00
+                        },
+                        {
+                            id: 5,
+                            nombre: 'Plancha de Vapor',
+                            precio: 45.00,
+                            cantidad: 2,
+                            subtotal: 90.00
+                        }
+                    ],
+                    totales: {
+                        subtotal: 810.00,
+                        iva: 97.20,
+                        envio: 25.00,
+                        total: 932.20
+                    },
+                    entrega: {
+                        direccion: 'Av. Simón Bolívar 789, Cuenca',
+                        ciudad: 'Cuenca',
+                        provincia: 'Azuay'
+                    },
+                    pago: {
+                        metodo: 'efectivo'
+                    },
+                    estado: 'entregado',
+                    fecha: '2024-02-25T13:20:00Z'
+                }
+            ];
+
+            // Guardar en localStorage
+            localStorage.setItem('usuarios', JSON.stringify(usuarios));
+            localStorage.setItem('pedidos', JSON.stringify(pedidos));
+
+            // Mostrar éxito
+            document.getElementById('status').innerHTML = `
+                <div style="background: #d4edda; color: #155724; padding: 10px; border-radius: 5px; margin-top: 10px;">
+                    ✅ Datos de ejemplo creados exitosamente:<br>
+                    - ${usuarios.length} usuarios<br>
+                    - ${pedidos.length} pedidos<br><br>
+                    <a href="admin.html" style="background: #28a745; color: white; padding: 8px 16px; text-decoration: none; border-radius: 4px;">
+                        Ir al Panel de Administrador
+                    </a>
+                </div>
+            `;
+
+            // También mostrar SweetAlert
+            Swal.fire({
+                title: '¡Datos Creados!',
+                text: `Se crearon ${usuarios.length} usuarios y ${pedidos.length} pedidos de ejemplo`,
+                icon: 'success',
+                confirmButtonText: 'Ir al Panel Admin'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    window.location.href = 'admin.html';
+                }
+            });
+        }
+
+        // Función para probar descarga de PDF
+        async function testPDFDownload() {
+            try {
+                // Cargar jsPDF dinámicamente
+                if (typeof window.jsPDF === 'undefined') {
+                    const script = document.createElement('script');
+                    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+                    document.head.appendChild(script);
+                    
+                    await new Promise((resolve, reject) => {
+                        script.onload = resolve;
+                        script.onerror = reject;
+                    });
+                }
+
+                // Crear factura de prueba
+                const orderTest = {
+                    id: 'TEST-001',
+                    numeroOrden: 'TEST-001',
+                    fecha: new Date().toISOString(),
+                    cliente: {
+                        nombre: 'Usuario',
+                        apellido: 'de Prueba',
+                        email: 'test@example.com',
+                        cedula: '1234567890',
+                        telefono: '0987654321'
+                    },
+                    productos: [
+                        {
+                            nombre: 'Refrigeradora LG 350L',
+                            precio: 850.00,
+                            cantidad: 1,
+                            subtotal: 850.00
+                        },
+                        {
+                            nombre: 'Microondas Samsung 20L',
+                            precio: 180.00,
+                            cantidad: 1,
+                            subtotal: 180.00
+                        }
+                    ],
+                    totales: {
+                        subtotal: 1030.00,
+                        iva: 123.60,
+                        envio: 15.00,
+                        total: 1168.60
+                    },
+                    entrega: {
+                        direccion: 'Av. Amazonas 123, Quito',
+                        ciudad: 'Quito',
+                        provincia: 'Pichincha'
+                    },
+                    pago: {
+                        metodo: 'tarjeta_credito'
+                    },
+                    estado: 'procesando'
+                };
+
+                // Generar PDF de prueba
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF();
+
+                // Configurar fuente
+                doc.setFont('helvetica');
+
+                // Header con logo y título
+                doc.setFontSize(20);
+                doc.setTextColor(40, 116, 166);
+                doc.text('EL VALLE', 20, 20);
+                doc.setFontSize(12);
+                doc.setTextColor(100, 100, 100);
+                doc.text('Electrodomésticos y Más', 20, 28);
+
+                // Título de factura
+                doc.setFontSize(16);
+                doc.setTextColor(0, 0, 0);
+                doc.text('FACTURA DE PRUEBA', 150, 20);
+                
+                // Número de orden y fecha
+                doc.setFontSize(10);
+                doc.text(`Orden #: ${orderTest.id}`, 150, 28);
+                doc.text(`Fecha: ${new Date(orderTest.fecha).toLocaleDateString('es-EC')}`, 150, 34);
+
+                // Línea separadora
+                doc.setLineWidth(0.5);
+                doc.line(20, 40, 190, 40);
+
+                // Datos del cliente
+                let yPos = 50;
+                doc.setFontSize(12);
+                doc.setTextColor(0, 0, 0);
+                doc.text('DATOS DEL CLIENTE:', 20, yPos);
+                
+                yPos += 8;
+                doc.setFontSize(10);
+                doc.text(`Nombre: ${orderTest.cliente.nombre} ${orderTest.cliente.apellido}`, 20, yPos);
+                yPos += 6;
+                doc.text(`Email: ${orderTest.cliente.email}`, 20, yPos);
+                yPos += 6;
+                doc.text(`Cédula: ${orderTest.cliente.cedula}`, 20, yPos);
+                yPos += 6;
+                doc.text(`Teléfono: ${orderTest.cliente.telefono}`, 20, yPos);
+
+                // Productos
+                yPos += 12;
+                doc.setFontSize(12);
+                doc.text('PRODUCTOS:', 20, yPos);
+                
+                // Headers de tabla
+                yPos += 10;
+                doc.setFontSize(9);
+                doc.setFillColor(240, 240, 240);
+                doc.rect(20, yPos - 5, 170, 8, 'F');
+                doc.text('PRODUCTO', 22, yPos);
+                doc.text('CANT.', 120, yPos);
+                doc.text('PRECIO', 140, yPos);
+                doc.text('SUBTOTAL', 165, yPos);
+
+                // Productos
+                yPos += 8;
+                orderTest.productos.forEach((producto) => {
+                    doc.setFontSize(8);
+                    const nombreCorto = producto.nombre.length > 35 ? producto.nombre.substring(0, 35) + '...' : producto.nombre;
+                    
+                    doc.text(nombreCorto, 22, yPos);
+                    doc.text(String(producto.cantidad), 125, yPos);
+                    doc.text(`$${producto.precio.toFixed(2)}`, 142, yPos);
+                    doc.text(`$${producto.subtotal.toFixed(2)}`, 167, yPos);
+                    yPos += 6;
+                });
+
+                // Totales
+                yPos += 10;
+                doc.setLineWidth(0.3);
+                doc.line(120, yPos, 190, yPos);
+                
+                yPos += 8;
+                doc.setFontSize(10);
+                doc.text('Subtotal:', 120, yPos);
+                doc.text(`$${orderTest.totales.subtotal.toFixed(2)}`, 165, yPos);
+                
+                yPos += 6;
+                doc.text('IVA (12%):', 120, yPos);
+                doc.text(`$${orderTest.totales.iva.toFixed(2)}`, 165, yPos);
+                
+                yPos += 6;
+                doc.text('Envío:', 120, yPos);
+                doc.text(`$${orderTest.totales.envio.toFixed(2)}`, 165, yPos);
+                
+                // Total final
+                yPos += 8;
+                doc.setLineWidth(0.5);
+                doc.line(120, yPos, 190, yPos);
+                yPos += 8;
+                doc.setFontSize(12);
+                doc.setFont('helvetica', 'bold');
+                doc.text('TOTAL:', 120, yPos);
+                doc.text(`$${orderTest.totales.total.toFixed(2)}`, 165, yPos);
+
+                // Información adicional
+                yPos += 20;
+                doc.setFont('helvetica', 'normal');
+                doc.setFontSize(9);
+                doc.setTextColor(100, 100, 100);
+                doc.text(`Estado del pedido: ${orderTest.estado}`, 20, yPos);
+                yPos += 5;
+                doc.text('Método de pago: Tarjeta de Crédito', 20, yPos);
+
+                // Footer
+                yPos += 15;
+                doc.setTextColor(150, 150, 150);
+                doc.setFontSize(8);
+                doc.text('Gracias por su compra - El Valle Electrodomésticos (PRUEBA)', 20, yPos);
+                doc.text(`Generado el: ${new Date().toLocaleString('es-EC')}`, 20, yPos + 5);
+
+                // Descargar PDF
+                const fileName = `Factura-Prueba-${Date.now()}.pdf`;
+                doc.save(fileName);
+
+                // Mostrar confirmación
+                Swal.fire({
+                    title: '¡PDF de Prueba Generado!',
+                    text: `Factura de prueba descargada como: ${fileName}`,
+                    icon: 'success',
+                    timer: 3000
+                });
+
+            } catch (error) {
+                console.error('Error generando PDF de prueba:', error);
+                Swal.fire({
+                    title: 'Error',
+                    text: 'Hubo un problema generando el PDF de prueba',
+                    icon: 'error'
+                });
+            }
+        }
+    </script>
+</body>
+</html>

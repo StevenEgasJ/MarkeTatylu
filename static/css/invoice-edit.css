@@ -1,0 +1,218 @@
+/* Estilos para la edición completa de facturas */
+
+/* Modal de edición de facturas */
+.swal2-popup.swal2-modal {
+    max-width: 95vw !important;
+    width: 900px !important;
+}
+
+/* Contenedor de productos en la edición */
+#productos-container {
+    max-height: 300px;
+    overflow-y: auto;
+    border: 1px solid #dee2e6;
+    border-radius: 0.375rem;
+    padding: 1rem;
+    background-color: #f8f9fa;
+}
+
+/* Items de productos */
+.producto-item {
+    background-color: white;
+    transition: all 0.3s ease;
+}
+
+.producto-item:hover {
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    transform: translateY(-1px);
+}
+
+/* Inputs de productos */
+.producto-item .form-control,
+.producto-item .form-select {
+    font-size: 0.9rem;
+}
+
+.producto-item .cantidad-input {
+    text-align: center;
+}
+
+.producto-item .precio-input,
+.producto-item .subtotal-input {
+    text-align: right;
+}
+
+.producto-item .subtotal-input {
+    background-color: #e9ecef;
+    font-weight: 600;
+}
+
+/* Botones de productos */
+.producto-item .btn-outline-danger {
+    border-color: #dc3545;
+    color: #dc3545;
+}
+
+.producto-item .btn-outline-danger:hover {
+    background-color: #dc3545;
+    color: white;
+    transform: scale(1.05);
+}
+
+/* Secciones del formulario */
+.border-bottom {
+    border-bottom: 2px solid #007bff !important;
+    color: #007bff;
+    font-weight: 600;
+}
+
+/* Totales destacados */
+#editTotal {
+    font-size: 1.1rem;
+    font-weight: bold;
+    color: #007bff;
+    background-color: #f0f8ff;
+    border: 2px solid #007bff;
+}
+
+#editSubtotal {
+    background-color: #f8f9fa;
+}
+
+#editIva {
+    background-color: #fff3cd;
+}
+
+/* Botones de acción en la tabla */
+.btn-outline-info {
+    color: #0dcaf0;
+    border-color: #0dcaf0;
+}
+
+.btn-outline-info:hover {
+    background-color: #0dcaf0;
+    color: white;
+}
+
+/* Animaciones */
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.producto-item {
+    animation: slideIn 0.3s ease-in-out;
+}
+
+/* Scroll personalizado para contenedor de productos */
+#productos-container::-webkit-scrollbar {
+    width: 8px;
+}
+
+#productos-container::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+
+#productos-container::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 4px;
+}
+
+#productos-container::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
+}
+
+/* Responsive para dispositivos móviles */
+@media (max-width: 768px) {
+    .swal2-popup.swal2-modal {
+        width: 95vw !important;
+        max-width: 95vw !important;
+    }
+    
+    .producto-item .row > div {
+        margin-bottom: 0.5rem;
+    }
+    
+    .producto-item .col-md-4,
+    .producto-item .col-md-2 {
+        flex: 0 0 100%;
+        max-width: 100%;
+    }
+    
+    .producto-item .col-md-4 {
+        margin-bottom: 1rem;
+    }
+}
+
+/* Iconos mejorados */
+.fa-file-invoice-dollar {
+    color: #0dcaf0;
+}
+
+.fa-plus {
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.1);
+    }
+    100% {
+        transform: scale(1);
+    }
+}
+
+/* Estados de validación */
+.is-invalid {
+    border-color: #dc3545;
+}
+
+.is-valid {
+    border-color: #198754;
+}
+
+/* Tooltips personalizados */
+[title] {
+    position: relative;
+}
+
+/* Mejoras para campos de fecha */
+input[type="datetime-local"] {
+    font-family: 'Courier New', monospace;
+}
+
+/* Loading state */
+.loading {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+.loading::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 20px;
+    height: 20px;
+    margin: -10px 0 0 -10px;
+    border: 2px solid #007bff;
+    border-radius: 50%;
+    border-top-color: transparent;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}

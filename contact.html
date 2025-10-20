@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ElValle - Contacto</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
+    <link rel="stylesheet" href="./static/css/styles.css">
+    <link rel="stylesheet" href="./static/css/contact.css">
+    <link href="https://fonts.googleapis.com/css2?family=Pacifico&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+    <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
+</head>
+<body>
+
+    <!-- Header -->
+    <header class="bg-custom">
+      <div class="container">
+        <div class="row align-items-center py-3">
+          <!-- Logo e Identidad -->
+          <div class="col-4 d-flex align-items-center">
+            <img src="./static/img/logo.png" alt="logo" class="img-fluid logo" style="max-height: 50px;">
+            <h1 class="ms-3 mb-0 text-custom site-title">El Valle</h1>
+          </div>
+          <!-- Menú y opciones de usuario -->
+          <div class="col-8 d-flex justify-content-end align-items-center">
+            <div class="d-flex align-items-center gap-3">
+              <!-- Dropdown de Usuario -->
+              <div class="dropdown">
+                <button class="btn btn-link p-0 border-0" type="button" id="userDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                  <i class="fa-solid fa-user fa-2x text-white user-icon"></i>
+                </button>
+                <!-- Dropdown Menu Mejorado -->
+                <div class="dropdown-menu dropdown-menu-end shadow-lg border-0 rounded-3 p-3" aria-labelledby="userDropdown" style="min-width: 280px; margin-top: 8px;">
+                  <div class="dropdown-header d-flex align-items-center mb-3">
+                    <i class="fa-solid fa-user-circle fa-2x text-primary me-2"></i>
+                    <h6 class="mb-0 fw-bold">Perfil de Usuario</h6>
+                  </div>
+                  <div class="user-info bg-light rounded-2 p-2 mb-3">
+                    <div class="mb-2">
+                      <small class="text-muted"><i class="fa-solid fa-envelope me-1"></i>Correo:</small>
+                      <div class="fw-semibold" id="userEmail">--</div>
+                    </div>
+                    <div class="mb-2">
+                      <small class="text-muted"><i class="fa-solid fa-user me-1"></i>Nombre:</small>
+                      <div class="fw-semibold" id="userNombre">--</div>
+                    </div>
+                    <div class="mb-0">
+                      <small class="text-muted"><i class="fa-solid fa-id-card me-1"></i>Apellido:</small>
+                      <div class="fw-semibold" id="userApellido">--</div>
+                    </div>
+                  </div>
+                  <div class="dropdown-divider"></div>
+                  <a class="dropdown-item rounded-2 py-2" href="compras.html">
+                    <i class="fa-solid fa-shopping-bag text-success me-2"></i>Mis Compras
+                  </a>
+                  <a class="dropdown-item rounded-2 py-2" href="#" onclick="logout()">
+                    <i class="fa-solid fa-right-from-bracket text-danger me-2"></i>Cerrar Sesión
+                  </a>
+                </div>
+              </div>
+              
+              <!-- Icono del carrito -->
+              <a href="cart.html" class="position-relative cart-link">
+                <i class="fa-solid fa-cart-shopping fa-2x text-white cart-icon" id="cart-icon"></i>
+                <span id="cart-count" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger cart-badge">
+                </span>
+              </a>
+              
+              <!-- Toggle de modo oscuro -->
+              <div class="theme-toggle-wrapper">
+                <div class="toggle-container" id="dark-mode-toggle">
+                  <div class="toggle-ball"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <div class="container">
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse justify-content-center" id="navbarNav">
+                <ul class="navbar-nav">
+                    <li class="nav-item"><a class="nav-link" href="index.html">Inicio</a></li>
+                    <li class="nav-item"><a class="nav-link" href="aboutUs.html">Quienes Somos</a></li>
+                    <li class="nav-item"><a class="nav-link" href="product.html">Productos</a></li>
+                    <li class="nav-item"><a class="nav-link" href="contact.html">Contacto</a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <main>
+        <div class="container py-5">
+            <div class="text-center mb-4">
+                <h2 class="fw-bold site-title">¡Contáctanos!</h2>
+            </div>
+
+            <div class="row g-4">
+                <!-- Formulario de Contacto -->
+                <div class="col-lg-6 d-flex">
+                    <div class="card p-3 section-1 w-100 h-100">
+                        <h3 class="fw-bold mb-3 text-center">Envíanos un Mensaje</h3>
+                        <form action="https://formsubmit.co/ventas@elvalleelectro.com" method="POST">
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Primer Nombre</label>
+                                    <input type="text" name="Nombres" class="form-control" placeholder="Nombre">
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Primer Apellido</label>
+                                    <input type="text" name="Apellidos" class="form-control custom-input" placeholder="Apellido">
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Correo Electrónico</label>
+                                    <input type="email" name="E-mail" class="form-control custom-input" placeholder="example@gmail.com">
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Teléfono</label>
+                                    <input type="tel" name="Teléfono" class="form-control custom-input" placeholder="+593 123 456 789">
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Mensaje</label>
+                                <textarea class="form-control custom-input" name="Mensaje" rows="5" placeholder="Escribe tu mensaje aquí..."></textarea>
+                            </div>
+                            <div class="text-center">
+                                <button type="submit" class="btn">Enviar</button>
+                            </div>
+                            <input type="hidden" name="_next" value="http://127.0.0.1:5000/contact">
+                            <input type="hidden" name="_captcha" value="false">
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Contenedor de Información y Mapa -->
+                <div class="col-lg-6 d-flex flex-column">
+                    <!-- Información de Contacto -->
+                    <div class="card p-2 shadow flex-grow-1 mb-3">
+                        <h3 class="fw-bold mb-3 text-center">Información de Contacto</h3>
+                        <ul class="list-unstyled">
+                            <li class="mb-2 d-flex align-items-center">
+                                <i class="bx bx-location-plus fs-5 me-2"></i> Avenida General Enríquez y Abdón Calderón, Sangolquí
+                            </li>
+                            <li class="mb-2 d-flex align-items-center">
+                                <i class="bx bxl-gmail fs-5 me-2"></i> 
+                                <p class="text-decoration-none">elvalleelectro@gmail.com</p>
+                            </li>
+                            <li class="mb-2 d-flex align-items-center">
+                                <i class="bx bx-phone-call fs-5 me-2"></i> 
+                                <p class="text-decoration-none">+593 99 999 9999</p>
+                            </li>
+                        </ul>
+
+                        <!-- Redes Sociales -->
+                        <div class="text-center mt-3">
+                            <a href="https://www.facebook.com/elvalleelectro" class="me-3 text-primary"><i class="bx bxl-facebook-circle fs-4"></i></a>
+                            <a href="https://www.instagram.com/elvalleelectro/" class="me-3 text-danger"><i class="bx bxl-instagram fs-4"></i></a>
+                            <a href="tel:+593999999999" class="text-success"><i class="bx bxl-whatsapp fs-4"></i></a>
+                        </div>
+                    </div>
+
+                    <!-- Mapa -->
+                    <div class="card p-3 shadow flex-grow-1">
+                        <iframe src="https://www.google.com/maps?q=-0.330000,-78.453000&z=15&output=embed"
+                            class="w-100" height="250" style="border:0;" allowfullscreen loading="lazy"></iframe>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="text-white py-4">
+        <div class="container">
+            <!-- Row principal -->
+            <div class="row text-center mb-3">
+                <div class="col-12">
+                    <h3>Sobre Nosotros</h3>
+                    <p class="mb-2">Somos una empresa dedicada a ofrecer electrodoméstricos de alta calidad a precios ascesibles para todo el público.</p>
+                </div>
+            </div>
+            
+            <!-- Row para información de contacto y redes sociales -->
+            <div class="row justify-content-center">
+                <!-- Columna de información de contacto -->
+                <div class="col-md-5 text-center mb-2 mb-md-0 me-md-5">
+                    <h4 class="h5 mb-2">Información de Contacto</h4>
+                    <p class="mb-1"><i class="fa-solid fa-envelope me-2"></i>ventas@elvalle.com</p>
+                    <p class="mb-1"><i class="fa-solid fa-location-dot me-2"></i>Avenida Maldonado S29-106, Quito</p>
+                    <p class="mb-1"><i class="fa-solid fa-phone me-2"></i>+593967967369</p>
+                </div>
+                
+                <!-- Columna de redes sociales -->
+                <div class="col-md-4 text-center ms-md-5">
+                    <h4 class="h5 mb-2">Síguenos</h4>
+                    <div class="social-icons">
+                        <a href="https://www.facebook.com/elvalle" class="me-3">
+                            <i class="fa-brands fa-facebook"></i>
+                        </a>
+                        <a href="https://www.instagram.com/elvalle/" class="me-3">
+                            <i class="fa-brands fa-instagram"></i>
+                        </a>
+                        <a href="https://www.tiktok.com/@lelvalle?lang=es" class="me-3">
+                            <i class="fa-brands fa-tiktok"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="./static/js/theme-toggle.js"></script>
+    <script src="./static/js/main.js"></script>
+
+</body>
+</html>

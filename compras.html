@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ElValle - Mis Compras</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="./static/css/styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Pacifico&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+</head>
+<body>
+
+    <!-- Header -->
+    <header class="bg-custom">
+      <div class="container">
+        <div class="row align-items-center py-3">
+          <!-- Logo e Identidad -->
+          <div class="col-4 d-flex align-items-center">
+            <img src="./static/img/logo.png" alt="logo" class="img-fluid logo" style="max-height: 50px;">
+            <h1 class="ms-3 mb-0 text-custom site-title">El Valle</h1>
+          </div>
+          <!-- Menú y opciones de usuario -->
+          <div class="col-8 d-flex justify-content-end align-items-center">
+            <div class="d-flex align-items-center gap-3">
+              <!-- Dropdown de Usuario -->
+              <div class="dropdown">
+                <button class="btn btn-link p-0 border-0" type="button" id="userDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                  <i class="fa-solid fa-user fa-2x text-white user-icon"></i>
+                </button>
+                <!-- Dropdown Menu Mejorado -->
+                <div class="dropdown-menu dropdown-menu-end shadow-lg border-0 rounded-3 p-3" aria-labelledby="userDropdown" style="min-width: 280px; margin-top: 8px;">
+                  <div class="dropdown-header d-flex align-items-center mb-3">
+                    <i class="fa-solid fa-user-circle fa-2x text-primary me-2"></i>
+                    <h6 class="mb-0 fw-bold">Perfil de Usuario</h6>
+                  </div>
+                  <div class="user-info bg-light rounded-2 p-2 mb-3">
+                    <div class="mb-2">
+                      <small class="text-muted"><i class="fa-solid fa-envelope me-1"></i>Correo:</small>
+                      <div class="fw-semibold" id="userEmail">--</div>
+                    </div>
+                    <div class="mb-2">
+                      <small class="text-muted"><i class="fa-solid fa-user me-1"></i>Nombre:</small>
+                      <div class="fw-semibold" id="userNombre">--</div>
+                    </div>
+                    <div class="mb-0">
+                      <small class="text-muted"><i class="fa-solid fa-id-card me-1"></i>Apellido:</small>
+                      <div class="fw-semibold" id="userApellido">--</div>
+                    </div>
+                  </div>
+                  <div class="dropdown-divider"></div>
+                  <a class="dropdown-item rounded-2 py-2" href="compras.html">
+                    <i class="fa-solid fa-shopping-bag text-success me-2"></i>Mis Compras
+                  </a>
+                  <a class="dropdown-item rounded-2 py-2" href="#" onclick="logout()">
+                    <i class="fa-solid fa-right-from-bracket text-danger me-2"></i>Cerrar Sesión
+                  </a>
+                </div>
+              </div>
+              
+              <!-- Icono del carrito -->
+              <a href="cart.html" class="position-relative cart-link">
+                <i class="fa-solid fa-cart-shopping fa-2x text-white cart-icon" id="cart-icon"></i>
+                <span id="cart-count" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger cart-badge">
+                </span>
+              </a>
+              
+              <!-- Toggle de modo oscuro -->
+              <div class="theme-toggle-wrapper">
+                <div class="toggle-container" id="dark-mode-toggle">
+                  <div class="toggle-ball"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <div class="container">
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse justify-content-center" id="navbarNav">
+                <ul class="navbar-nav">
+                    <li class="nav-item"><a class="nav-link" href="index.html">Inicio</a></li>
+                    <li class="nav-item"><a class="nav-link" href="aboutUs.html">Quienes Somos</a></li>
+                    <li class="nav-item"><a class="nav-link" href="product.html">Productos</a></li>
+                    <li class="nav-item"><a class="nav-link" href="contact.html">Contacto</a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="container my-5">
+        <div class="row">
+            <div class="col-12">
+                <h1 class="text-center mb-4 site-title">Mis Compras</h1>
+                
+                <!-- Contenedor de órdenes -->
+                <div id="orders-container">
+                    <!-- Las órdenes se cargarán dinámicamente aquí -->
+                </div>
+                
+                <!-- Mensaje si no hay compras -->
+                <div id="no-orders" class="text-center" style="display: none;">
+                    <div class="alert alert-info">
+                        <i class="fa-solid fa-shopping-bag fa-3x mb-3"></i>
+                        <h5>No tienes compras registradas</h5>
+                        <p>Cuando realices una compra, aparecerá aquí tu historial.</p>
+                        <a href="product.html" class="btn btn-primary">
+                            <i class="fa-solid fa-shopping-cart"></i> Explorar Productos
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="text-white py-4">
+        <div class="container">
+            <div class="row text-center mb-3">
+                <div class="col-12">
+                    <h3>Sobre Nosotros</h3>
+                    <p class="mb-2">Somos una empresa dedicada a ofrecer electrodoméstricos de alta calidad a precios accesibles para todo el público.</p>
+                </div>
+            </div>
+            
+            <div class="row justify-content-center">
+                <div class="col-md-5 text-center mb-2 mb-md-0 me-md-5">
+                    <h4 class="h5 mb-2">Información de Contacto</h4>
+                    <p class="mb-1"><i class="fa-solid fa-envelope me-2"></i>ventas@elvalle.com</p>
+                    <p class="mb-1"><i class="fa-solid fa-location-dot me-2"></i>Avenida Maldonado S29-106, Quito</p>
+                    <p class="mb-1"><i class="fa-solid fa-phone me-2"></i>+593967967369</p>
+                </div>
+                
+                <div class="col-md-4 text-center ms-md-5">
+                    <h4 class="h5 mb-2">Síguenos</h4>
+                    <div class="social-icons">
+                        <a href="https://www.facebook.com/elvalle" class="me-3">
+                            <i class="fa-brands fa-facebook"></i>
+                        </a>
+                        <a href="https://www.instagram.com/elvalle/" class="me-3">
+                            <i class="fa-brands fa-instagram"></i>
+                        </a>
+                        <a href="https://www.tiktok.com/@lelvalle?lang=es" class="me-3">
+                            <i class="fa-brands fa-tiktok"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="./static/js/productManager.js"></script>
+    <script src="./static/js/checkoutManager_new.js"></script>
+    <script src="./static/js/theme-toggle.js"></script>
+    <script src="./static/js/main.js"></script>
+    
+    <script>
+        // Cargar historial de compras al cargar la página
+        document.addEventListener("DOMContentLoaded", function() {
+            loadUserOrders();
+        });
+
+        // Función para cargar las órdenes del usuario
+        function loadUserOrders() {
+            // Verificar autenticación
+            if (localStorage.getItem('userLoggedIn') !== 'true') {
+                window.location.href = 'login.html';
+                return;
+            }
+
+            const ordersContainer = document.getElementById('orders-container');
+            const noOrdersMessage = document.getElementById('no-orders');
+            
+            console.log('🔍 Cargando órdenes del usuario...');
+            
+            try {
+                let orders = [];
+                const userEmail = localStorage.getItem('userEmail');
+                
+                if (!userEmail) {
+                    throw new Error('Email de usuario no encontrado');
+                }
+                
+                // Intentar obtener órdenes de múltiples fuentes
+                console.log('👤 Email del usuario:', userEmail);
+                
+                // 1. Intentar desde checkoutManager
+                if (typeof checkoutManager !== 'undefined' && checkoutManager.getUserOrders) {
+                    try {
+                        orders = checkoutManager.getUserOrders();
+                        console.log('✅ Órdenes del checkoutManager:', orders.length);
+                    } catch (error) {
+                        console.warn('⚠️ Error usando checkoutManager:', error);
+                    }
+                }
+                
+                // 2. Si no hay órdenes, intentar desde localStorage directamente
+                if (orders.length === 0) {
+                    console.log('🔄 Intentando obtener órdenes desde localStorage...');
+                    
+                    // Órdenes específicas del usuario
+                    const userOrders = JSON.parse(localStorage.getItem(`orders_${userEmail}`) || '[]');
+                    console.log('📋 Órdenes específicas del usuario:', userOrders.length);
+                    
+                    if (userOrders.length > 0) {
+                        orders = userOrders;
+                    } else {
+                        // Historial general de compras
+                        const comprasHistorial = JSON.parse(localStorage.getItem('comprasHistorial') || '[]');
+                        console.log('📚 Historial general de compras:', comprasHistorial.length);
+                        
+                        orders = comprasHistorial.filter(order => 
+                            order.cliente && order.cliente.email === userEmail
+                        );
+                        console.log('🎯 Órdenes filtradas para el usuario:', orders.length);
+                    }
+                    
+                    // También verificar el storage de pedidos del admin
+                    const adminPedidos = JSON.parse(localStorage.getItem('pedidos') || '[]');
+                    console.log('⚙️ Pedidos del admin:', adminPedidos.length);
+                    
+                    const adminUserOrders = adminPedidos.filter(order => 
+                        order.cliente && order.cliente.email === userEmail
+                    );
+                    
+                    if (adminUserOrders.length > 0) {
+                        console.log('🎯 Órdenes del admin para el usuario:', adminUserOrders.length);
+                        orders = [...orders, ...adminUserOrders];
+                    }
+                }
+                
+                // Eliminar duplicados basados en ID
+                const uniqueOrders = orders.filter((order, index, self) => 
+                    index === self.findIndex(o => (o.id || o.numeroOrden) === (order.id || order.numeroOrden))
+                );
+                
+                console.log('📦 Total de órdenes únicas encontradas:', uniqueOrders.length);
+                
+                if (uniqueOrders.length === 0) {
+                    ordersContainer.style.display = 'none';
+                    noOrdersMessage.style.display = 'block';
+                    console.log('💭 Mostrando mensaje de "sin compras"');
+                } else {
+                    ordersContainer.style.display = 'block';
+                    noOrdersMessage.style.display = 'none';
+                    
+                    // Ordenar por fecha (más recientes primero)
+                    uniqueOrders.sort((a, b) => new Date(b.fecha || 0) - new Date(a.fecha || 0));
+                    
+                    ordersContainer.innerHTML = uniqueOrders.map(order => renderOrderCard(order)).join('');
+                    console.log('✅ Órdenes renderizadas exitosamente');
+                }
+                
+            } catch (error) {
+                console.error('💥 Error cargando compras:', error);
+                
+                // Mostrar error al usuario
+                if (ordersContainer && noOrdersMessage) {
+                    ordersContainer.style.display = 'none';
+                    noOrdersMessage.innerHTML = `
+                        <div class="alert alert-danger">
+                            <h5><i class="fa-solid fa-exclamation-triangle me-2"></i>Error cargando compras</h5>
+                            <p>Hubo un problema cargando tu historial de compras.</p>
+                            <details>
+                                <summary>Detalles técnicos</summary>
+                                <small class="text-muted">${error.message}</small>
+                            </details>
+                            <hr>
+                            <button class="btn btn-outline-primary btn-sm" onclick="loadUserOrders()">
+                                <i class="fa-solid fa-refresh me-1"></i>Intentar de nuevo
+                            </button>
+                            <a href="index.html" class="btn btn-outline-secondary btn-sm">
+                                <i class="fa-solid fa-home me-1"></i>Volver al inicio
+                            </a>
+                        </div>
+                    `;
+                    noOrdersMessage.style.display = 'block';
+                }
+            }
+        }
+        
+        // Función para renderizar una tarjeta de orden
+        function renderOrderCard(order) {
+            try {
+                return `
+                    <div class="card mb-4 shadow-sm">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <div>
+                                <h5 class="mb-0">Pedido #${order.id || order.numeroOrden || 'N/A'}</h5>
+                                <small class="text-muted">${order.fecha ? new Date(order.fecha).toLocaleDateString('es-ES', {
+                                    year: 'numeric',
+                                    month: 'long',
+                                    day: 'numeric',
+                                    hour: '2-digit',
+                                    minute: '2-digit'
+                                }) : 'Fecha no disponible'}</small>
+                            </div>
+                            <div class="text-end">
+                                <span class="badge ${getStatusBadgeClass(order.estado)} mb-1">
+                                    ${(order.estado || 'PROCESANDO').toUpperCase()}
+                                </span>
+                                <div><strong class="h5">$${order.totales ? order.totales.total.toFixed(2) : '0.00'}</strong></div>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-8">
+                                    <h6>Productos:</h6>
+                                    <div class="row">
+                                        ${order.productos ? order.productos.map(producto => `
+                                            <div class="col-6 col-md-4 mb-2">
+                                                <div class="d-flex align-items-center">
+                                                    <img src="${producto.imagen || './static/img/producto.png'}" alt="${producto.nombre}" 
+                                                         class="img-thumbnail me-2" style="width: 50px; height: 50px; object-fit: cover;">
+                                                    <div>
+                                                        <div class="fw-bold">${producto.nombre}</div>
+                                                        <small class="text-muted">Cant: ${producto.cantidad} | $${(producto.precio || 0).toFixed(2)}</small>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        `).join('') : '<div class="col-12"><small class="text-muted">No hay productos disponibles</small></div>'}
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <h6>Entrega:</h6>
+                                    <p class="small mb-2">
+                                        <i class="fa-solid fa-location-dot me-1"></i>
+                                        ${order.entrega ? order.entrega.direccion || 'Dirección no disponible' : 'Dirección no disponible'}
+                                    </p>
+                                    <p class="small mb-2">
+                                        <i class="fa-solid fa-credit-card me-1"></i>
+                                        ${getPaymentMethodText(order.pago ? order.pago.metodo : null)}
+                                    </p>
+                                    <div class="d-grid gap-2">
+                                        <button class="btn btn-outline-primary btn-sm" onclick="viewOrder('${order.id || order.numeroOrden}')">
+                                            <i class="fa-solid fa-eye me-1"></i>Ver Detalles
+                                        </button>
+                                        <button class="btn btn-outline-success btn-sm" onclick="downloadInvoice('${order.id || order.numeroOrden}')">
+                                            <i class="fa-solid fa-download me-1"></i>Descargar PDF
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } catch (error) {
+                console.error('Error renderizando orden:', error, order);
+                return `
+                    <div class="card mb-4 border-warning">
+                        <div class="card-body">
+                            <div class="alert alert-warning">
+                                <i class="fa-solid fa-exclamation-triangle me-2"></i>
+                                Error mostrando pedido #${order.id || order.numeroOrden || 'N/A'}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+        
+        // Función para obtener la clase CSS del badge según el estado
+        function getStatusBadgeClass(estado) {
+            switch(estado) {
+                case 'confirmado':
+                case 'entregado':
+                    return 'bg-success';
+                case 'enviado':
+                    return 'bg-info';
+                case 'preparando':
+                    return 'bg-warning';
+                case 'cancelado':
+                    return 'bg-danger';
+                default:
+                    return 'bg-secondary';
+            }
+        }
+
+        // Ver detalles de una orden
+        function viewOrder(orderId) {
+            if (typeof checkoutManager !== 'undefined') {
+                const orders = checkoutManager.getUserOrders();
+                const order = orders.find(o => (o.id || o.numeroOrden) === orderId);
+                
+                if (order) {
+                    checkoutManager.showInvoice(order);
+                } else {
+                    Swal.fire('Error', 'Pedido no encontrado', 'error');
+                }
+            } else {
+                Swal.fire('Error', 'Sistema no disponible', 'error');
+            }
+        }
+
+        // Descargar factura
+        function downloadInvoice(orderId) {
+            console.log('🔽 Click en descarga detectado para orden:', orderId);
+            
+            // Verificar que la función global existe
+            if (typeof window.downloadInvoicePDF !== 'function') {
+                console.error('❌ window.downloadInvoicePDF no está disponible');
+                Swal.fire('Error', 'Función de descarga no disponible', 'error');
+                return;
+            }
+            
+            console.log('✅ Función downloadInvoicePDF encontrada');
+            
+            // Verificar autenticación
+            const userEmail = localStorage.getItem('userEmail');
+            if (!userEmail) {
+                console.error('❌ Usuario no autenticado');
+                Swal.fire('Error', 'Usuario no autenticado', 'error');
+                return;
+            }
+            
+            console.log('✅ Usuario autenticado:', userEmail);
+            
+            let orders = [];
+            
+            try {
+                // 1. Órdenes específicas del usuario
+                const userOrders = JSON.parse(localStorage.getItem(`orders_${userEmail}`) || '[]');
+                console.log('📋 Órdenes del usuario:', userOrders.length);
+                orders = [...orders, ...userOrders];
+                
+                // 2. Historial general de compras
+                const comprasHistorial = JSON.parse(localStorage.getItem('comprasHistorial') || '[]');
+                console.log('📚 Historial general:', comprasHistorial.length);
+                const comprasDelUsuario = comprasHistorial.filter(order => 
+                    order.cliente && order.cliente.email === userEmail
+                );
+                orders = [...orders, ...comprasDelUsuario];
+                
+                // 3. Admin pedidos si existe
+                const adminPedidos = JSON.parse(localStorage.getItem('adminPedidos') || '[]');
+                console.log('👨‍💼 Pedidos admin:', adminPedidos.length);
+                const adminOrdersDelUsuario = adminPedidos.filter(order => 
+                    order.cliente && order.cliente.email === userEmail
+                );
+                orders = [...orders, ...adminOrdersDelUsuario];
+                
+                // Eliminar duplicados
+                const uniqueOrders = orders.filter((order, index, self) => 
+                    index === self.findIndex(o => (o.id || o.numeroOrden) === (order.id || order.numeroOrden))
+                );
+                
+                console.log('📋 Total órdenes únicas encontradas:', uniqueOrders.length);
+                console.log('🔍 Buscando orden ID:', orderId);
+                
+                // Log de todas las órdenes disponibles
+                uniqueOrders.forEach((order, index) => {
+                    const orderIdToCheck = order.id || order.numeroOrden;
+                    console.log(`� Orden ${index + 1}: ID = "${orderIdToCheck}", Cliente = ${order.cliente?.email}`);
+                });
+                
+                // Buscar la orden específica
+                const order = uniqueOrders.find(o => {
+                    const orderIdToCheck = o.id || o.numeroOrden;
+                    return orderIdToCheck === orderId;
+                });
+                
+                if (order) {
+                    console.log('✅ Orden encontrada, datos:', order);
+                    console.log('🖨️ Llamando a window.downloadInvoicePDF...');
+                    window.downloadInvoicePDF(order);
+                } else {
+                    console.error('❌ Orden no encontrada');
+                    console.log('📋 IDs disponibles:', uniqueOrders.map(o => o.id || o.numeroOrden));
+                    Swal.fire({
+                        title: 'Error',
+                        text: `Pedido con ID "${orderId}" no encontrado`,
+                        icon: 'error',
+                        footer: `Total de pedidos encontrados: ${uniqueOrders.length}`
+                    });
+                }
+            } catch (error) {
+                console.error('💥 Error en downloadInvoice:', error);
+                Swal.fire('Error', 'Error procesando la descarga: ' + error.message, 'error');
+            }
+        }
+
+        // Obtener texto del método de pago
+        function getPaymentMethodText(method) {
+            const methods = {
+                efectivo: 'Efectivo (Contra entrega)',
+                tarjeta: 'Tarjeta de Crédito/Débito',
+                tarjeta_credito: 'Tarjeta de Crédito',
+                tarjeta_debito: 'Tarjeta de Débito',
+                transferencia: 'Transferencia Bancaria',
+                paypal: 'PayPal',
+                bitcoin: 'Bitcoin',
+                efectivo_local: 'Efectivo (Retiro en tienda)'
+            };
+            return methods[method] || method || 'No especificado';
+        }
+    </script>
+
+</body>
+</html>
