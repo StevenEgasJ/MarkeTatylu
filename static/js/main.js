@@ -427,6 +427,15 @@ function agregarAlCarrito(id, nombre, precio, imagen, mililitros) {
         refreshProductDisplay();
     }, 100);
 
+    // Intentar sincronizar carrito con servidor si existe API y token
+    try {
+        if (window.api && typeof window.api.updateCart === 'function') {
+            window.api.updateCart(carrito).catch(err => console.warn('Sync cart failed:', err));
+        }
+    } catch (err) {
+        console.warn('Cart sync skipped:', err);
+    }
+
     console.log('🛒 Cart updated successfully');
 }
 
@@ -535,6 +544,15 @@ function actualizarCantidad(index, cambio) {
     setTimeout(() => {
         refreshProductDisplay();
     }, 100);
+
+    // Sync cart to server if available
+    try {
+        if (window.api && typeof window.api.updateCart === 'function') {
+            window.api.updateCart(carrito).catch(err => console.warn('Sync cart failed:', err));
+        }
+    } catch (err) {
+        console.warn('Cart sync skipped:', err);
+    }
 }
 
 function eliminarDelCarrito(index) {
@@ -548,6 +566,15 @@ function eliminarDelCarrito(index) {
     setTimeout(() => {
         refreshProductDisplay();
     }, 100);
+
+    // Sync cart to server if available
+    try {
+        if (window.api && typeof window.api.updateCart === 'function') {
+            window.api.updateCart(carrito).catch(err => console.warn('Sync cart failed:', err));
+        }
+    } catch (err) {
+        console.warn('Cart sync skipped:', err);
+    }
 }
 
 // --- FUNCIONES DE USUARIO ---
@@ -921,6 +948,14 @@ function removeFromCart(productId) {
             });
             
             console.log(`✅ Producto eliminado: ${productName}`);
+            // Sync cart to server if available
+            try {
+                if (window.api && typeof window.api.updateCart === 'function') {
+                    window.api.updateCart(carrito).catch(err => console.warn('Sync cart failed:', err));
+                }
+            } catch (err) {
+                console.warn('Cart sync skipped:', err);
+            }
             return true;
         }
     } catch (error) {
@@ -928,6 +963,7 @@ function removeFromCart(productId) {
         return false;
     }
 }
+
 
 // Exponer funciones globalmente
 window.increaseQuantity = increaseQuantity;

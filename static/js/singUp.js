@@ -56,39 +56,53 @@ document.addEventListener("DOMContentLoaded", function() {
                 return;
             }
 
-            // Verificar si el email ya está registrado
-            const registeredUsers = JSON.parse(localStorage.getItem('registeredUsers')) || [];
-            const existingUser = registeredUsers.find(user => user.email === userData.email);
-            
-            if (existingUser) {
-                Swal.fire({
-                    title: 'Email ya registrado',
-                    text: 'Este email ya está registrado. Por favor usa otro email o inicia sesión.',
-                    icon: 'error',
-                    showCancelButton: true,
-                    confirmButtonText: 'Iniciar sesión',
-                    cancelButtonText: 'Intentar otro email'
-                }).then((result) => {
-                    if (result.isConfirmed) {
-                        window.location.href = "login.html";
+            // Try registering via API if available
+            try {
+                if (window.api && typeof window.api.register === 'function') {
+                    const payload = {
+                        nombre: userData.nombre,
+                        apellido: userData.apellido,
+                        email: userData.email,
+                        password: userData.password,
+                        cedula: userData.cedula,
+                        telefono: userData.telefono,
+                        photo: userData.photo || null
+                    };
+
+                    const res = await window.api.register(payload);
+                    // API returns { token, user }
+                    if (res && res.token) {
+                        localStorage.setItem('token', res.token);
+                        localStorage.setItem('userLoggedIn', 'true');
+                        localStorage.setItem('userEmail', res.user.email);
+                        localStorage.setItem('userNombre', res.user.nombre || userData.nombre);
+                        // Redirect to index
+                        // Try to load server-side cart into localStorage
+                        try {
+                            if (window.api && typeof window.api.getCart === 'function') {
+                                    let serverCartRes = await window.api.getCart();
+                                    const serverCart = Array.isArray(serverCartRes) ? serverCartRes : (serverCartRes && serverCartRes.cart) ? serverCartRes.cart : [];
+                                    if (Array.isArray(serverCart) && serverCart.length > 0) {
+                                        const mapped = serverCart.map(item => ({ id: item.id || item._id || item.productId, nombre: item.nombre || item.name || '', precio: item.precio || item.price || 0, imagen: item.imagen || item.image || '', mililitros: item.mililitros || item.capacidad || 'N/A', cantidad: item.cantidad || item.quantity || item.qty || 1 }));
+                                        localStorage.setItem('carrito', JSON.stringify(mapped));
+                                    }
+                                }
+                        } catch (err) {
+                            console.warn('Could not load server cart after register:', err);
+                        }
+
+                        await Swal.fire({ title: 'Registro exitoso', text: 'Cuenta creada y autenticada.', icon: 'success', confirmButtonText: 'OK' });
+                        window.location.href = 'index.html';
+                        return;
                     }
-                });
-                return;
+                }
+            } catch (err) {
+                console.error('API register failed, falling back to local:', err);
+                // fallthrough to localStorage fallback below
             }
 
-            // Verificar si la cédula ya está registrada
-            const existingCedula = registeredUsers.find(user => user.cedula === userData.cedula);
-            if (existingCedula) {
-                Swal.fire({
-                    title: 'Cédula ya registrada',
-                    text: 'Esta cédula ya está asociada a otra cuenta.',
-                    icon: 'error',
-                    confirmButtonText: 'OK'
-                });
-                return;
-            }
-
-            // Registrar nuevo usuario en localStorage
+            // Fallback: Registrar nuevo usuario en localStorage
+            const registeredUsers = JSON.parse(localStorage.getItem('registeredUsers')) || [];
             registeredUsers.push(userData);
             localStorage.setItem('registeredUsers', JSON.stringify(registeredUsers));
 

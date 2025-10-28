@@ -1,6 +1,42 @@
 document.addEventListener("DOMContentLoaded", function() {
     // Verificar si ya está logueado
     if (localStorage.getItem('userLoggedIn') === 'true') {
+        const loginForm = document.getElementById("loginForm");
+        loginForm.addEventListener("submit", async(e) => {
+            e.preventDefault();
+            const email = document.getElementById("email").value.trim().toLowerCase();
+            const password = document.getElementById("password").value;
+
+            // Validación de formato de email
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(email)) {
+            // Verificar si es el admin
+            if (email === 'admin@gmail.com' && password === '123456') {
+                // Login como administrador
+    // Obtener usuarios registrados
+    const registeredUsers = JSON.parse(localStorage.getItem('registeredUsers')) || [];
+    const user = registeredUsers.find(u => u.email.toLowerCase() === email && u.password === password);
+            // Try to authenticate via API
+            try {
+                if (window.api && typeof window.api.login === 'function') {
+            if (user) {
+                // Guardar sesión en localStorage
+                localStorage.setItem('userLoggedIn', 'true');
+                // Redirigir al índice
+                window.location.href = 'index.html';
+            } else {
+                Swal.fire({
+                    title: 'Error de autenticación',
+                    text: 'Email o contraseña incorrectos.',
+                });
+            }
+        });
+    // Solicitar permisos de notificación al cargar la página
+    if ('Notification' in window && Notification.permission === 'default') {
+        Notification.requestPermission();
+document.addEventListener("DOMContentLoaded", function() {
+    // Verificar si ya está logueado
+    if (localStorage.getItem('userLoggedIn') === 'true') {
         window.location.href = "index.html";
         return;
     }
@@ -59,80 +95,41 @@ document.addEventListener("DOMContentLoaded", function() {
         const registeredUsers = JSON.parse(localStorage.getItem('registeredUsers')) || [];
         const user = registeredUsers.find(u => u.email.toLowerCase() === email && u.password === password);
         
-        if (user) {
-            // Login exitoso
-            await Swal.fire({
-                title: '¡Login exitoso!',
-                text: `Bienvenido de vuelta, ${user.nombre}`,
-                icon: 'success',
-                confirmButtonText: 'Continuar'
-            });
-
-            // Limpiar datos de usuario anterior si es un usuario diferente
-            const previousUser = localStorage.getItem('userEmail');
-            if (previousUser && previousUser !== user.email) {
-                console.log('🔄 Cambiando de usuario, limpiando datos anteriores...');
-                // Limpiar solo datos de usuario, no productos ni admin
-                localStorage.removeItem('userEmail');
-                localStorage.removeItem('userNombre');
-                localStorage.removeItem('userApellido');
-                localStorage.removeItem('userCedula');
-                localStorage.removeItem('userTelefono');
-                localStorage.removeItem('userPhoto');
-                localStorage.removeItem('carrito');
-                localStorage.removeItem('loginTimestamp');
-            }
-
-            // Guardar datos del usuario en localStorage
-            localStorage.setItem('userLoggedIn', 'true');
-            localStorage.setItem('userEmail', user.email);
-            localStorage.setItem('userNombre', user.nombre);
-            localStorage.setItem('userApellido', user.apellido);
-            localStorage.setItem('userCedula', user.cedula);
-            localStorage.setItem('userTelefono', user.telefono || '');
-            localStorage.setItem('loginTimestamp', Date.now().toString());
-            
-            // Guardar foto de usuario (limpiar si no tiene foto)
-            if (user.photo) {
-                localStorage.setItem('userPhoto', user.photo);
-            } else {
-                localStorage.removeItem('userPhoto'); // Limpiar foto anterior si el nuevo usuario no tiene
-            }
-            
-            // Mostrar notificación del navegador
-            if ('Notification' in window && Notification.permission === 'granted') {
-                new Notification('El Valle', {
-                    body: `Bienvenido de vuelta, ${user.nombre}`,
-                    icon: './static/img/logo.png'
-                });
-            }
-            
-            // Redirigir a la página principal
-            window.location.href = "index.html";
-        } else {
-            // Verificar si el email existe pero la contraseña es incorrecta
-            const emailExists = registeredUsers.find(u => u.email.toLowerCase() === email);
-            
-            if (emailExists) {
-                Swal.fire({
-                    title: 'Contraseña incorrecta',
-                    text: 'El email es correcto, pero la contraseña no coincide.',
-                    icon: 'error',
-                    confirmButtonText: 'Intentar de nuevo'
-                });
-            } else {
-                // Email no registrado
-                Swal.fire({
-                    title: 'Usuario no encontrado',
-                    text: 'Este email no está registrado. ¿Deseas crear una cuenta?',
-                    icon: 'warning',
-                    showCancelButton: true,
-                    confirmButtonText: 'Crear Cuenta',
-                    cancelButtonText: 'Intentar de nuevo'
-                }).then((result) => {
-                    if (result.isConfirmed) {
-                        window.location.href = "signUp.html";
+            // Try to authenticate via API
+            try {
+                if (window.api && typeof window.api.login === 'function') {
+                    const res = await window.api.login({ email, password });
+                    if (res && res.token) {
+                        localStorage.setItem('token', res.token);
+                        localStorage.setItem('userLoggedIn', 'true');
+                        localStorage.setItem('userEmail', res.user.email);
+                        localStorage.setItem('userNombre', res.user.nombre || '');
+                        localStorage.setItem('userApellido', res.user.apellido || '');
+                        if (res.user.photo) localStorage.setItem('userPhoto', res.user.photo);
+                        window.location.href = 'index.html';
+                        return;
                     }
+                }
+            } catch (err) {
+                console.error('API login failed, falling back to local:', err);
+                // fallthrough to localStorage fallback
+            }
+
+            if (user) {
+                // Guardar sesión en localStorage
+                localStorage.setItem('userLoggedIn', 'true');
+                localStorage.setItem('userEmail', user.email);
+                localStorage.setItem('userNombre', user.nombre || '');
+                localStorage.setItem('userApellido', user.apellido || '');
+                if (user.photo) localStorage.setItem('userPhoto', user.photo);
+
+                // Redirigir al índice
+                window.location.href = 'index.html';
+            } else {
+                Swal.fire({
+                    title: 'Error de autenticación',
+                    text: 'Email o contraseña incorrectos.',
+                    icon: 'error',
                 });
             }
         }

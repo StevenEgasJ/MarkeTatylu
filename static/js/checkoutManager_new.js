@@ -1242,12 +1242,51 @@ window.enviarCarrito = async function() {
             return;
         }
 
-        // ✅ PASO 8: Generar y guardar pedido
+        // ✅ PASO 8: Generar pedido local para UI
         const order = generateOrder(carrito, userData, locationData, totals, invoiceData);
+
+        // Intentar enviar el checkout al servidor (persistir en MongoDB Atlas)
+        let serverOrderId = null;
+        try {
+            if (window.api && typeof window.api.checkout === 'function') {
+                const payload = {
+                    items: carrito.map(item => ({ id: item.id, cantidad: item.cantidad })),
+                    resumen: totals,
+                    shipping: {
+                        direccion: invoiceData.direccion || invoiceData.direccion || locationData.address.full,
+                        ciudad: invoiceData.ciudad || locationData.address.city,
+                        provincia: invoiceData.provincia || locationData.address.province,
+                        ubicacionCompleta: locationData
+                    }
+                };
+
+                const res = await window.api.checkout(payload);
+                if (res && res.orderId) {
+                    serverOrderId = res.orderId;
+                    order.id = res.orderId;
+                    console.log('✅ Checkout persisted on server, orderId=', serverOrderId);
+                }
+            }
+        } catch (err) {
+            console.error('API checkout failed, will fallback to local save:', err);
+        }
+
+        // Guardar historial local (si el servidor respondió, usar ese ID)
         saveOrderToHistory(order);
 
-        // ✅ PASO 8.5: Actualizar stock de productos
-        updateProductStock(carrito);
+        // Si el checkout fue exitoso en servidor, intentar refrescar productos desde API para actualizar stock
+        try {
+            if (serverOrderId && window.api && typeof window.api.getProducts === 'function' && typeof productManager.fetchProductsFromApi === 'function') {
+                await productManager.fetchProductsFromApi();
+                console.log('🔄 Productos refrescados desde servidor tras checkout');
+            } else {
+                // Fallback local stock update
+                updateProductStock(carrito);
+            }
+        } catch (err) {
+            console.warn('No se pudo refrescar productos desde API, actualizando localmente:', err);
+            updateProductStock(carrito);
+        }
 
         // ✅ PASO 9: Mostrar factura final
         await showFinalInvoice(order);

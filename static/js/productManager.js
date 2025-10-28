@@ -3,12 +3,49 @@ class ProductManager {
     constructor() {
         this.products = this.loadProducts();
         this.initializeDefaultProducts();
+
+        // If API is available, try to load products from server and overwrite local list
+        try {
+            if (window.api && typeof window.api.getProducts === 'function') {
+                this.fetchProductsFromApi();
+            }
+        } catch (err) {
+            console.warn('API products fetch skipped:', err);
+        }
     }
 
     // Cargar productos desde localStorage
     loadProducts() {
         const products = localStorage.getItem('productos');
         return products ? JSON.parse(products) : [];
+    }
+
+    // Intentar obtener productos desde la API del servidor (Atlas)
+    async fetchProductsFromApi() {
+        try {
+            const serverProducts = await window.api.getProducts();
+            if (Array.isArray(serverProducts) && serverProducts.length > 0) {
+                // Map server products to local shape
+                this.products = serverProducts.map(p => ({
+                    id: p._id || p.id,
+                    nombre: p.nombre || p.name || p.title || 'Producto',
+                    precio: p.precio || p.price || 0,
+                    capacidad: p.capacidad || p.descripcion?.substring(0,50) || p.descripcion || 'N/A',
+                    imagen: p.imagen || p.image || './static/img/producto.png',
+                    descripcion: p.descripcion || p.description || p.nombre || '',
+                    categoria: p.categoria || p.category || 'electrodomesticos',
+                    stock: p.stock || 0,
+                    fechaCreacion: p.fechaCreacion || p.createdAt || new Date().toISOString(),
+                    fechaModificacion: p.fechaModificacion || p.updatedAt || new Date().toISOString(),
+                    isAdminProduct: true
+                }));
+
+                this.saveProducts();
+                console.log('✅ Productos cargados desde API:', this.products.length);
+            }
+        } catch (err) {
+            console.warn('No se pudo cargar productos desde API:', err.message || err);
+        }
     }
 
     // Guardar productos en localStorage
