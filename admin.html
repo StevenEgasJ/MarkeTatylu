@@ -63,6 +63,16 @@
                                 <i class="fa-solid fa-shopping-cart me-2"></i>Pedidos
                             </a>
                         </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#" data-bs-toggle="modal" data-bs-target="#promoModal">
+                                <i class="fa-solid fa-envelope me-2"></i>Promociones
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#" onclick="showReviews()">
+                                <i class="fa-solid fa-star me-2"></i>Reseñas
+                            </a>
+                        </li>
                     </ul>
                 </div>
             </nav>
@@ -153,6 +163,7 @@
                                     </div>
                                 </div>
                             </div>
+                            
                         </div>
                         
                         <div class="col-md-4">
@@ -166,6 +177,20 @@
                                     </div>
                                 </div>
                             </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Promo section for admin (moved below recent orders) -->
+                </div>
+
+                <!-- Reviews Section -->
+                <div id="reviews-section" class="content-section">
+                    <div class="d-flex justify-content-between align-items-center pt-3 pb-2 mb-3 border-bottom">
+                        <h1 class="h2">Moderación de Reseñas</h1>
+                    </div>
+                    <div class="card">
+                        <div class="card-body">
+                            <div id="adminReviewsList">Cargando reseñas...</div>
                         </div>
                     </div>
                 </div>
@@ -317,6 +342,8 @@
                                 </div>
                             </div>
                         </div>
+
+                                
                         
                         <!-- Preview de imagen -->
                         <div class="row mt-3" id="imagePreviewContainer" style="display: none;">
@@ -424,28 +451,108 @@
     </div>
 
     <!-- Scripts -->
+    <!-- Promo Modal (moved here from inside product modal to avoid nested modal/backdrop issues) -->
+    <div class="modal fade" id="promoModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Enviar Promoción por Email</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="promoForm">
+                        <div class="mb-3">
+                            <label class="form-label">Asunto</label>
+                            <input type="text" id="promoSubject" class="form-control" placeholder="Asunto de la promoción" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Mensaje (HTML)</label>
+                            <textarea id="promoHtml" class="form-control" rows="6" placeholder="Mensaje. Usa {{name}} para personalizar."></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Tipo de promoción</label>
+                            <select id="promoType" class="form-select">
+                                <option value="message">Mensaje HTML</option>
+                                <option value="product">Producto destacado</option>
+                                <option value="coupon">Cupón de descuento</option>
+                            </select>
+                        </div>
+                        <div class="mb-3" id="promoProductContainer" style="display:none;">
+                            <label class="form-label">ID del producto (opcional)</label>
+                            <input type="text" id="promoProductId" class="form-control" placeholder="Ingrese _id o código del producto a destacar">
+                            <small class="text-muted">Si se deja vacío, se enviará el mensaje general sin enlace a producto.</small>
+                        </div>
+                        <div class="mb-3" id="promoCouponContainer" style="display:none;">
+                            <label class="form-label">Código de cupón</label>
+                            <input type="text" id="promoCouponCode" class="form-control" placeholder="EJEMPLO10">
+                            <small class="text-muted">El cupón será incluido en el mensaje como texto. Puedes usarlo manualmente en el HTML con <code>{{coupon}}</code>.</small>
+                        </div>
+                        <div class="mb-3 form-check">
+                            <input type="checkbox" class="form-check-input" id="promoSendAll" checked>
+                            <label class="form-check-label" for="promoSendAll">Enviar a todos los usuarios</label>
+                        </div>
+                        <div class="mb-3" id="promoEmailsContainer" style="display:none;">
+                            <label class="form-label">Correos (uno por línea)</label>
+                            <textarea id="promoEmails" class="form-control" rows="3" placeholder="user1@example.com\nuser2@example.com"></textarea>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" id="promoSendBtn">Enviar Promoción</button>
+                </div>
+            </div>
+        </div>
+    </div>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="./static/js/productManager.js"></script>
     <script src="./static/js/product-codes.js"></script>
-    <script src="./static/js/admin-new.js"></script>
+    <!-- API client provides window.api helpers when available -->
+    <script src="./static/js/apiClient.js"></script>
+    <!-- Use the unified admin script (server-aware) instead of the old admin-new.js -->
+    <script src="./static/js/admin.js"></script>
+    <script src="./static/js/admin-reviews.js"></script>
     
     <script>
         // Función para generar nuevo código
         function generateNewCode() {
             const codeField = document.getElementById('productCode');
             const newCode = generateUniqueProductCode();
-            codeField.value = newCode;
-            
-            Swal.fire({
-                toast: true,
-                position: 'top-end',
-                showConfirmButton: false,
-                timer: 2000,
-                icon: 'success',
-                title: 'Código generado',
-                text: `Nuevo código: ${newCode}`
-            });
+            try {
+                codeField.value = newCode;
+                // focus and select the new code so admin sees it immediately
+                codeField.focus();
+                codeField.select();
+            } catch (e) {
+                console.warn('Could not set code field value', e);
+            }
+
+            // show a short non-blocking toast and explicitly close any stray Swal modal containers
+            try {
+                Swal.fire({
+                    toast: true,
+                    position: 'top-end',
+                    showConfirmButton: false,
+                    timer: 1400,
+                    timerProgressBar: true,
+                    icon: 'success',
+                    title: 'Código generado',
+                    text: `Nuevo código: ${newCode}`
+                });
+
+                // remove any accidental extra modal-backdrop left behind (best-effort)
+                setTimeout(() => {
+                    document.querySelectorAll('.swal2-container').forEach(n => n.style.pointerEvents = 'auto');
+                    const backdrops = document.querySelectorAll('.modal-backdrop');
+                    if (backdrops.length > 1) {
+                        // keep one backdrop only
+                        for (let i = 1; i < backdrops.length; i++) backdrops[i].remove();
+                    }
+                }, 1600);
+            } catch (err) {
+                console.warn('Swal not available or failed to show toast', err);
+            }
         }
         
         // Limpiar formulario cuando se abre el modal
@@ -458,6 +565,506 @@
                 }, 100);
             }
         });
+
+        // --- NEW: Section navigation helpers (make functions global so onclick attributes work) ---
+        function _clearActiveSidebar() {
+            document.querySelectorAll('.sidebar .nav-link').forEach(link => {
+                link.classList.remove('active');
+            });
+        }
+
+        function _showSectionById(id) {
+            document.querySelectorAll('.content-section').forEach(section => {
+                section.classList.remove('active');
+            });
+            const el = document.getElementById(id);
+            if (el) el.classList.add('active');
+        }
+
+        // Exposed functions used by inline onclick attributes
+        function showDashboard() {
+            _clearActiveSidebar();
+            const dashLink = document.querySelector('.sidebar .nav-link[onclick^="showDashboard"]');
+            if (dashLink) dashLink.classList.add('active');
+            _showSectionById('dashboard-section');
+        }
+
+        function showProducts() {
+            _clearActiveSidebar();
+            const prodLink = document.querySelector('.sidebar .nav-link[onclick^="showProducts"]');
+            if (prodLink) prodLink.classList.add('active');
+            _showSectionById('products-section');
+        }
+
+        function showUsers() {
+            _clearActiveSidebar();
+            const userLink = document.querySelector('.sidebar .nav-link[onclick^="showUsers"]');
+            if (userLink) userLink.classList.add('active');
+            _showSectionById('users-section');
+        }
+
+        function showOrders() {
+            _clearActiveSidebar();
+            const orderLink = document.querySelector('.sidebar .nav-link[onclick^="showOrders"]');
+            if (orderLink) orderLink.classList.add('active');
+            _showSectionById('orders-section');
+        }
+
+        function showReviews() {
+            _clearActiveSidebar();
+            const revLink = document.querySelector('.sidebar .nav-link[onclick^="showReviews"]');
+            if (revLink) revLink.classList.add('active');
+            _showSectionById('reviews-section');
+            // load admin reviews list if available
+            try { if (typeof loadAll === 'function') { /* admin-reviews.js exposes loadAll internally; let it init on DOMContentLoaded */ } } catch(e){}
+        }
+
+        // Ensure a default visible section on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            // If any section already marked .active, keep it; otherwise show dashboard
+            if (!document.querySelector('.content-section.active')) {
+                showDashboard();
+            } else {
+                // Sync sidebar active state with the visible section
+                const visible = document.querySelector('.content-section.active');
+                if (visible && visible.id === 'products-section') showProducts();
+                else if (visible && visible.id === 'users-section') showUsers();
+                else if (visible && visible.id === 'orders-section') showOrders();
+                else showDashboard();
+            }
+        });
+        // --- END NEW ---
+
+        // Small helper to call server API; prefer window.api if available, fallback to fetch.
+        async function fetchJson(path, options) {
+            try {
+                if (window.api && typeof window.api.fetch === 'function') {
+                    // some electron-style bridges expose fetch-like helpers
+                    return await window.api.fetch(path, options);
+                }
+                if (window.api && typeof window.api.invoke === 'function') {
+                    // generic invoke helper (if your bridge uses RPC)
+                    return await window.api.invoke(path, options || {});
+                }
+                const res = await fetch(path, options);
+                if (!res.ok) throw new Error('Network response was not ok: ' + res.status);
+                return await res.json();
+            } catch (err) {
+                console.error('fetchJson error for', path, err);
+                return null;
+            }
+        }
+
+        // Populate Products table
+        async function loadProductsFromDb() {
+            const tbody = document.getElementById('productsTable');
+            tbody.innerHTML = '<tr><td colspan="7">Cargando...</td></tr>';
+            const data = await fetchJson('/api/products');
+            if (!Array.isArray(data)) {
+                tbody.innerHTML = '<tr><td colspan="7">No se pudieron cargar los productos</td></tr>';
+                return;
+            }
+            if (data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7">No hay productos</td></tr>';
+                return;
+            }
+            tbody.innerHTML = '';
+            data.forEach(p => {
+                const tr = document.createElement('tr');
+
+                // Support multiple possible field names from the server (English/Spanish/variants)
+                const id = p._id || p.id || p._id || '';
+                const imgSrc = p.image || p.imageUrl || p.imagen || p.imageUrl || '';
+                const name = p.name || p.nombre || p.title || p.productName || '';
+                const priceNum = Number(p.price ?? p.precio ?? p.cost ?? 0) || 0;
+                const category = p.category || p.categoria || '';
+                const stockNum = Number(p.stock ?? p.qty ?? 0) || 0;
+
+                const imgHtml = imgSrc
+                    ? `<img src="${imgSrc}" alt="${escapeHtml(name)}" style="width:60px;height:60px;object-fit:cover;border-radius:4px;">`
+                    : '';
+
+                tr.innerHTML = `
+                    <td>${escapeHtml(id)}</td>
+                    <td>${imgHtml}</td>
+                    <td>${escapeHtml(name)}</td>
+                    <td>$${priceNum.toFixed(2)}</td>
+                    <td>${escapeHtml(category)}</td>
+                    <td>${stockNum}</td>
+                    <td>
+                        <button class="btn btn-sm btn-primary" data-action="edit-product" data-id="${id}"><i class="fa-solid fa-pen me-1"></i>Editar</button>
+                        <button class="btn btn-sm btn-danger" data-action="delete-product" data-id="${id}"><i class="fa-solid fa-trash me-1"></i>Eliminar</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // Populate Users table
+        async function loadUsersFromDb() {
+            const tbody = document.getElementById('usersTable');
+            tbody.innerHTML = '<tr><td colspan="6">Cargando...</td></tr>';
+            const data = await fetchJson('/api/users');
+            if (!Array.isArray(data)) {
+                tbody.innerHTML = '<tr><td colspan="6">No se pudieron cargar los usuarios</td></tr>';
+                return;
+            }
+            if (data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6">No hay usuarios</td></tr>';
+                return;
+            }
+            tbody.innerHTML = '';
+            data.forEach(u => {
+                // Accept multiple server shapes: Spanish (nombre/apellido), English (name/lastName), and other variants
+                const email = u.email || u.emailAddress || u.username || '';
+                const nombre = u.name || u.nombre || u.firstName || u.givenName || '';
+                const apellido = u.lastName || u.apellido || u.last || u.surname || '';
+                const cedula = u.cedula || u.identification || '';
+                const createdRaw = u.createdAt || u.fechaRegistro || u.createdAtString || u.registeredAt || '';
+                const created = createdRaw ? new Date(createdRaw).toLocaleString() : '';
+                const id = u._id || u.id || u.email || '';
+
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${escapeHtml(email)}</td>
+                    <td>${escapeHtml(nombre)}</td>
+                    <td>${escapeHtml(apellido)}</td>
+                    <td>${escapeHtml(cedula)}</td>
+                    <td>${escapeHtml(created)}</td>
+                    <td>
+                        <button class="btn btn-sm btn-primary" data-action="edit-user" data-id="${escapeHtml(id)}"><i class="fa-solid fa-pen me-1"></i>Editar</button>
+                        <button class="btn btn-sm btn-danger" data-action="delete-user" data-id="${escapeHtml(id)}"><i class="fa-solid fa-trash me-1"></i>Eliminar</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // Populate Orders table and dashboard stats
+        async function loadOrdersFromDb() {
+            const tbody = document.getElementById('ordersTable');
+            tbody.innerHTML = '<tr><td colspan="6">Cargando...</td></tr>';
+            const data = await fetchJson('/api/orders');
+            if (!Array.isArray(data)) {
+                tbody.innerHTML = '<tr><td colspan="6">No se pudieron cargar los pedidos</td></tr>';
+                return;
+            }
+            if (data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6">No hay pedidos</td></tr>';
+                return;
+            }
+            tbody.innerHTML = '';
+            let totalSales = 0;
+            const recentContainer = document.getElementById('recentOrders');
+            recentContainer.innerHTML = '';
+
+            // Sort orders by known date fields descending
+            const ordersSorted = data.slice().sort((a,b) => {
+                const da = new Date(a.createdAt || a.date || a.fecha || a.timestamp || 0).getTime();
+                const db = new Date(b.createdAt || b.date || b.fecha || b.timestamp || 0).getTime();
+                return db - da;
+            });
+
+            // Render each order, enriching client info when necessary
+            for (const order of ordersSorted) {
+                const id = order._id || order.id || '';
+
+                // Date fallback
+                const rawDate = order.createdAt || order.date || order.fecha || order.timestamp || '';
+                const date = rawDate ? new Date(rawDate).toLocaleString() : '';
+
+                // Client fallback: try resumen.cliente, cliente, or fall back to userId lookup
+                let client = '';
+                if (order.resumen && (order.resumen.cliente || order.resumen.customer)) {
+                    const rc = order.resumen.cliente || order.resumen.customer;
+                    client = rc?.nombre || rc?.name || rc?.email || '';
+                } else if (order.cliente) {
+                    client = (typeof order.cliente === 'string') ? order.cliente : (order.cliente?.nombre || order.cliente?.name || order.cliente?.email || '');
+                } else if (order.clientName) {
+                    client = order.clientName;
+                }
+
+                if (!client && (order.userId || order.user || order.usuario || order.user_id)) {
+                    const uid = order.userId || order.user || order.usuario || order.user_id;
+                    try {
+                        const u = await fetchJson(`/api/users/${uid}`);
+                        if (u) client = u.nombre || u.name || (u.nombre ? `${u.nombre} ${u.apellido || ''}`.trim() : u.email || '');
+                    } catch (e) {
+                        console.warn('Could not fetch user for order list', uid, e);
+                    }
+                    if (!client) client = String(uid);
+                }
+
+                // Total fallbacks
+                const totalVal = Number(order.resumen?.total ?? order.totales?.total ?? order.total ?? order.amount ?? order.monto ?? 0) || 0;
+                totalSales += totalVal;
+
+                const status = escapeHtml(order.status || order.state || order.estado || '');
+
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${escapeHtml(id)}</td>
+                    <td>${escapeHtml(client)}</td>
+                    <td>${escapeHtml(date)}</td>
+                    <td>$${totalVal.toFixed(2)}</td>
+                    <td>${status}</td>
+                    <td>
+                        <button class="btn btn-sm btn-info" data-action="view-order" data-id="${escapeHtml(id)}"><i class="fa-solid fa-eye me-1"></i>Ver</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            }
+
+            // Update dashboard totals
+            document.getElementById('totalOrders').textContent = data.length;
+            document.getElementById('totalSales').textContent = `$${totalSales.toFixed(2)}`;
+
+            // Fill recent orders list (top 5)
+            const recent = ordersSorted.slice(0,5);
+            if (recent.length === 0) recentContainer.innerHTML = '<div>No hay pedidos recientes</div>';
+            else {
+                recent.forEach(o => {
+                    const el = document.createElement('div');
+                    const d = o.createdAt ? new Date(o.createdAt).toLocaleString() : (o.date ? new Date(o.date).toLocaleString() : '');
+                    el.className = 'mb-2';
+                    el.innerHTML = `<strong>#${escapeHtml(o._id||o.id||'')}</strong> — ${escapeHtml(o.customerName||o.clientName||o.email||'Cliente desconocido')} <br><small>${escapeHtml(d)} • $${(Number(o.total||0)).toFixed(2)}</small>`;
+                    recentContainer.appendChild(el);
+                });
+            }
+        }
+
+        // Compute and update products/users totals and top products widget
+        async function loadDashboardStatsAndProducts() {
+            const products = await fetchJson('/api/products') || [];
+            const users = await fetchJson('/api/users') || [];
+
+            document.getElementById('totalProducts').textContent = products.length;
+            document.getElementById('totalUsers').textContent = users.length;
+
+            // Top products widget (by sold or fallback to stock)
+            const topProductsContainer = document.getElementById('topProducts');
+            topProductsContainer.innerHTML = '';
+            if (products.length === 0) {
+                topProductsContainer.innerHTML = '<div>No hay productos</div>';
+                return;
+            }
+            const items = products.slice().sort((a,b) => Number(b.sold ?? b.sales ?? b.vendidos ?? 0) - Number(a.sold ?? a.sales ?? a.vendidos ?? 0));
+            const top = items.slice(0,5);
+            top.forEach(p => {
+                const line = document.createElement('div');
+                line.className = 'mb-2 d-flex align-items-center';
+                const img = p.image || p.imageUrl || p.imagen || '';
+                const thumb = img ? `<img src="${img}" style="width:40px;height:40px;object-fit:cover;border-radius:4px;margin-right:8px;">` : '';
+                const sold = p.sold ?? p.sales ?? p.vendidos ?? 0;
+                const name = p.name || p.nombre || p.title || p.productName || '';
+                line.innerHTML = `${thumb}<div><strong>${escapeHtml(name)}</strong><br><small>${sold} vendidos</small></div>`;
+                topProductsContainer.appendChild(line);
+            });
+        }
+
+        // Utility: simple HTML escaper
+        function escapeHtml(s) {
+            if (s === null || s === undefined) return '';
+            return String(s).replace(/[&<>"']/g, function (m) {
+                return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]);
+            });
+        }
+
+        // Wire loaders into existing showX functions so they refresh when view changes.
+        const _origShowDashboard = window.showDashboard;
+        window.showDashboard = function() {
+            try { if (typeof _origShowDashboard === 'function') _origShowDashboard(); } catch(e){ /* ignore */ }
+            loadDashboardStatsAndProducts();
+            // Also refresh orders/users counts in background
+            loadOrdersFromDb().catch(()=>{});
+        };
+
+        const _origShowProducts = window.showProducts;
+        window.showProducts = function() {
+            try { if (typeof _origShowProducts === 'function') _origShowProducts(); } catch(e){ /* ignore */ }
+            loadProductsFromDb();
+        };
+
+        const _origShowUsers = window.showUsers;
+        window.showUsers = function() {
+            try { if (typeof _origShowUsers === 'function') _origShowUsers(); } catch(e){ /* ignore */ }
+            loadUsersFromDb();
+        };
+
+        const _origShowOrders = window.showOrders;
+        window.showOrders = function() {
+            try { if (typeof _origShowOrders === 'function') _origShowOrders(); } catch(e){ /* ignore */ }
+            loadOrdersFromDb();
+        };
+
+        // On initial page load populate the default visible section and widgets
+        document.addEventListener('DOMContentLoaded', function() {
+            // ensure dashboard and counts are loaded
+            loadDashboardStatsAndProducts().catch(()=>{});
+            // if dashboard active, also load recent orders
+            if (document.getElementById('dashboard-section').classList.contains('active')) {
+                loadOrdersFromDb().catch(()=>{});
+            }
+        });
+
+        // Small wrappers for action buttons (these may be implemented elsewhere; if not, add simple behaviors)
+        // Backwards-compatible wrappers (kept for older handlers) - prefer delegated handlers below
+        window.editProduct = window.editProduct || function(id){ console.log('editProduct fallback', id); };
+        window.deleteProduct = window.deleteProduct || function(id){ console.log('deleteProduct fallback', id); };
+        window.editUser = window.editUser || function(id){ console.log('editUser fallback', id); };
+        window.deleteUser = window.deleteUser || function(id){ console.log('deleteUser fallback', id); };
+        window.viewOrder = window.viewOrder || function(id){ console.log('viewOrder fallback', id); };
+
+        // Delegated click handler for table action buttons using data-action/data-id
+        document.addEventListener('click', function(e) {
+            const btn = e.target.closest('button[data-action]');
+            if (!btn) return;
+            const action = btn.getAttribute('data-action');
+            const id = btn.getAttribute('data-id');
+
+            if (typeof adminManager === 'undefined') {
+                // Try to lazily initialize adminManager if the class is available (handles race/errors where admin.js failed to attach)
+                if (typeof AdminPanelManager === 'function') {
+                    try {
+                        console.warn('adminManager missing — creating new AdminPanelManager instance lazily');
+                        window.adminManager = new AdminPanelManager();
+                    } catch (err) {
+                        console.error('Failed to create adminManager lazily:', err);
+                        Swal.fire('Error', 'No se pudo inicializar el panel de administración. Recarga la página e inténtalo de nuevo.', 'error');
+                        return;
+                    }
+                } else {
+                    console.error('adminManager not available when handling', action, id);
+                    Swal.fire('Error', 'El administrador no está inicializado. Recarga la página y vuelve a intentarlo.', 'error');
+                    return;
+                }
+            }
+
+            try {
+                switch(action) {
+                    case 'edit-product': adminManager.editProduct(id); break;
+                    case 'delete-product': adminManager.deleteProduct(id); break;
+                    case 'edit-user': adminManager.editUser(id); break;
+                    case 'delete-user': adminManager.deleteUser(id); break;
+                    case 'view-order': adminManager.viewOrder(id); break;
+                    default: console.warn('Unknown admin action', action);
+                }
+            } catch (err) {
+                console.error('Error handling admin action', action, id, err);
+                Swal.fire('Error', 'Ocurrió un error al ejecutar la acción: ' + (err.message || err), 'error');
+            }
+        });
+
+        // Promo modal behavior (defensive: only attach listeners if elements exist)
+        (function(){
+            const sendAllEl = document.getElementById('promoSendAll');
+            const emailsContainer = document.getElementById('promoEmailsContainer');
+            const typeEl = document.getElementById('promoType');
+            const productContainer = document.getElementById('promoProductContainer');
+            const couponContainer = document.getElementById('promoCouponContainer');
+            const sendBtn = document.getElementById('promoSendBtn');
+
+            if (sendAllEl && emailsContainer) {
+                sendAllEl.addEventListener('change', function() {
+                    emailsContainer.style.display = this.checked ? 'none' : 'block';
+                });
+            }
+
+            if (typeEl) {
+                const updateType = () => {
+                    const t = typeEl.value;
+                    if (productContainer) productContainer.style.display = (t === 'product') ? 'block' : 'none';
+                    if (couponContainer) couponContainer.style.display = (t === 'coupon') ? 'block' : 'none';
+                    if (t === 'message') {
+                        if (productContainer) productContainer.style.display = 'none';
+                        if (couponContainer) couponContainer.style.display = 'none';
+                    }
+                };
+                typeEl.addEventListener('change', updateType);
+                // run once to initialize
+                try { updateType(); } catch(e) { /* ignore */ }
+            }
+
+            if (!sendBtn) return; // nothing else to do
+
+            sendBtn.addEventListener('click', async function() {
+                // basic lock to avoid duplicate submits
+                if (sendBtn._sending) return;
+                sendBtn._sending = true;
+                const origText = sendBtn.innerHTML;
+                sendBtn.disabled = true;
+                sendBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Enviando...';
+
+                try {
+                    const subjEl = document.getElementById('promoSubject');
+                    const htmlEl = document.getElementById('promoHtml');
+                    const subj = subjEl ? subjEl.value.trim() : '';
+                    const html = htmlEl ? htmlEl.value.trim() : '';
+                    const sendAll = sendAllEl ? sendAllEl.checked : true;
+                    const emailsRawEl = document.getElementById('promoEmails');
+                    const emailsRaw = emailsRawEl ? emailsRawEl.value || '' : '';
+                    const promoType = typeEl ? typeEl.value || 'message' : 'message';
+                    const productIdEl = document.getElementById('promoProductId');
+                    const productId = productIdEl ? productIdEl.value.trim() : '';
+                    const couponEl = document.getElementById('promoCouponCode');
+                    const couponCode = couponEl ? couponEl.value.trim() : '';
+
+                    if (!subj || !html) {
+                        Swal.fire('Faltan campos', 'Debes ingresar asunto y mensaje.', 'warning');
+                        return;
+                    }
+
+                    const payload = { subject: subj, html, promoType };
+                    if (productId) payload.productId = productId;
+                    if (couponCode) payload.coupon = couponCode;
+                    if (!sendAll) {
+                        const list = emailsRaw.split(/[\r\n,;]+/).map(s => s.trim()).filter(Boolean);
+                        if (list.length === 0) { Swal.fire('Correos vacíos', 'Agrega al menos un correo o marca enviar a todos.', 'warning'); return; }
+                        payload.target = 'emails';
+                        payload.emails = list;
+                    } else {
+                        payload.target = 'all';
+                    }
+
+                    const token = (typeof getAuthToken === 'function') ? getAuthToken() : (sessionStorage.getItem('token') || localStorage.getItem('token'));
+                    const headers = { 'Content-Type': 'application/json' };
+                    if (token) headers['Authorization'] = 'Bearer ' + token;
+
+                    const res = await fetch('/api/admin/send-promo', { method: 'POST', headers, body: JSON.stringify(payload) });
+                    let bodyText = null;
+                    let parsed = null;
+                    try { bodyText = await res.text(); parsed = JSON.parse(bodyText); } catch (e) { /* not JSON or empty */ }
+
+                    if (!res.ok) {
+                        // handle common auth errors specially
+                        if (res.status === 401 || res.status === 403) {
+                            Swal.fire('No autorizado', 'Debe iniciar sesión como administrador para enviar promociones.', 'error');
+                        } else {
+                            const msg = parsed?.error || parsed?.message || bodyText || ('Error ' + res.status);
+                            Swal.fire('Error', 'No se pudo enviar la promoción: ' + msg, 'error');
+                        }
+                        return;
+                    }
+
+                    const j = parsed || {};
+                    Swal.fire('Enviado', `Promoción encolada a ${j.queued || j.sent || 0} usuarios.`, 'success');
+                    // close modal safely
+                    try {
+                        const modalEl = document.getElementById('promoModal');
+                        const modal = bootstrap.Modal.getInstance(modalEl);
+                        if (modal) modal.hide();
+                    } catch(e) { /* ignore */ }
+
+                } catch (err) {
+                    console.error('send promo error', err);
+                    Swal.fire('Error', 'No se pudo enviar la promoción. Revisa la consola.', 'error');
+                } finally {
+                    sendBtn._sending = false;
+                    sendBtn.disabled = false;
+                    sendBtn.innerHTML = origText;
+                }
+            });
+        })();
     </script>
 </body>
 </html>

@@ -75,10 +75,7 @@ document.addEventListener("DOMContentLoaded", async function() {
     // Inicializar búsqueda
     initializeSearch();
 
-    // Solicitar permisos de notificación
-    if ('Notification' in window && Notification.permission === 'default') {
-        Notification.requestPermission();
-    }
+    // NOTE: Removed automatic notification permission requests per user preference.
 
     // Evento para confirmar el carrito
     const confirmarBtn = document.getElementById("confirmar-productos");
@@ -235,11 +232,14 @@ function createProductCard(product) {
                             </span>
                         </small>
                     </div>
-                    <button class="btn btn-primary w-100" 
-                            onclick="agregarAlCarrito('${product.id}', '${product.nombre}', ${product.precio}, '${product.imagen}', '${product.capacidad || 'N/A'}')"
-                            ${(product.stock || 0) <= 0 ? 'disabled' : ''}>
-                        ${(product.stock || 0) <= 0 ? 'Sin Stock' : 'Agregar al Carrito'}
-                    </button>
+                                        <div class="d-grid gap-2">
+                                            <button class="btn btn-outline-secondary" onclick="openProductModal('${product.id || product._id}')">Ver más</button>
+                                            <button class="btn btn-primary" 
+                                                            onclick="agregarAlCarrito('${product.id}', '${product.nombre}', ${product.precio}, '${product.imagen}', '${product.capacidad || 'N/A'}')"
+                                                            ${(product.stock || 0) <= 0 ? 'disabled' : ''}>
+                                                    ${(product.stock || 0) <= 0 ? 'Sin Stock' : 'Agregar al Carrito'}
+                                            </button>
+                                        </div>
                 </div>
             </div>
         </div>

@@ -137,7 +137,7 @@ async function showLocationMapConfirmation(currentLocation) {
 
 // Función para obtener nueva ubicación
 async function getNewLocationData() {
-    const { value: action } = await Swal.fire({
+    const result = await Swal.fire({
         title: 'Obtener Ubicación de Entrega',
         html: `
             <div class="text-start">
@@ -163,9 +163,20 @@ async function getNewLocationData() {
         allowOutsideClick: false
     });
 
-    if (action === undefined) return null;
-    if (action) return await getCurrentLocationData();
-    else return await getManualLocationData();
+    // SweetAlert returns an object with flags indicating which button was used.
+    // - isConfirmed: user clicked the confirm button (Usar GPS)
+    // - isDenied: user clicked the deny button (Cancelar compra)
+    // - isDismissed + dismiss === Swal.DismissReason.cancel: user clicked the cancel button (Ingresar manual)
+    if (result.isConfirmed) {
+        return await getCurrentLocationData();
+    }
+
+    if (result.isDismissed && result.dismiss === Swal.DismissReason.cancel) {
+        return await getManualLocationData();
+    }
+
+    // Deny or any other dismissal means cancel the whole flow
+    return null;
 }
 
 // Función para obtener ubicación GPS

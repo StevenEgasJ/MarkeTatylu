@@ -120,6 +120,105 @@
             <div class="row" id="products-container">
                 <!-- Los productos se cargarán dinámicamente aquí -->
             </div>
+
+      <!-- Reviews Widget -->
+      <div class="row mt-5">
+        <div class="col-md-8 offset-md-2">
+          <div class="card" id="reviewsWidget">
+            <div class="card-body">
+              <h5 class="card-title">Reseñas de Clientes</h5>
+              <div class="mb-3">
+                <label class="form-label">Seleccionar producto</label>
+                <select id="reviewProductSelect" class="form-select mb-2"></select>
+              </div>
+              <div id="reviewsList" class="mb-3"></div>
+
+              <h6>Escribe una reseña</h6>
+              <form id="reviewForm">
+                <div class="row g-2">
+                  <div class="col-md-4">
+                    <input id="reviewName" class="form-control" placeholder="Nombre (opcional)">
+                  </div>
+                  <div class="col-md-4">
+                    <input id="reviewEmail" type="email" class="form-control" placeholder="Email (opcional)">
+                  </div>
+                  <div class="col-md-4">
+                    <select id="reviewRating" class="form-select">
+                      <option value="5">5 estrellas</option>
+                      <option value="4">4 estrellas</option>
+                      <option value="3">3 estrellas</option>
+                      <option value="2">2 estrellas</option>
+                      <option value="1">1 estrella</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="mt-2">
+                  <input id="reviewTitle" class="form-control" placeholder="Título (opcional)">
+                </div>
+                <div class="mt-2">
+                  <textarea id="reviewBody" class="form-control" rows="4" placeholder="Escribe tu reseña..."></textarea>
+                </div>
+                <div class="mt-2 text-end">
+                  <button class="btn btn-primary" type="submit">Enviar reseña</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- Product Detail Modal (used by 'Ver más' on product cards) -->
+      <div class="modal fade" id="productDetailModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title" id="modalProductTitle">Producto</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <div class="row">
+                <div class="col-md-5 text-center">
+                  <img id="modalProductImage" src="" alt="Producto" class="img-fluid mb-3" style="max-height:300px; object-fit:cover;">
+                  <div><strong id="modalProductPrice"></strong></div>
+                  <div class="text-muted small" id="modalProductStock"></div>
+                </div>
+                <div class="col-md-7">
+                  <p id="modalProductDescription"></p>
+
+                  <hr>
+                  <h6>Reseñas</h6>
+                  <div id="modalReviewsList" class="mb-3">Cargando reseñas...</div>
+
+                  <button id="modalAddReviewBtn" class="btn btn-outline-primary mb-3">Agregar reseña</button>
+
+                  <div id="modalReviewFormContainer" style="display:none;">
+                    <form id="modalReviewForm">
+                      <div class="row g-2">
+                        <div class="col-md-6"><input id="modalReviewName" class="form-control" placeholder="Nombre (opcional)"></div>
+                        <div class="col-md-6"><input id="modalReviewEmail" type="email" class="form-control" placeholder="Email (opcional)"></div>
+                      </div>
+                      <div class="mt-2">
+                        <select id="modalReviewRating" class="form-select">
+                          <option value="5">5 estrellas</option>
+                          <option value="4">4 estrellas</option>
+                          <option value="3">3 estrellas</option>
+                          <option value="2">2 estrellas</option>
+                          <option value="1">1 estrella</option>
+                        </select>
+                      </div>
+                      <div class="mt-2"><input id="modalReviewTitle" class="form-control" placeholder="Título (opcional)"></div>
+                      <div class="mt-2"><textarea id="modalReviewBody" class="form-control" rows="4" placeholder="Escribe tu reseña..."></textarea></div>
+                      <div class="mt-2 text-end">
+                        <button class="btn btn-primary" type="submit">Enviar reseña</button>
+                      </div>
+                    </form>
+                  </div>
+
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
         </div>
     </main>
 
@@ -168,6 +267,8 @@
   <script src="./static/js/productManager.js"></script>
   <script src="./static/js/checkoutManager_new.js"></script>
   <script src="./static/js/theme-toggle.js"></script>
+  <script src="./static/js/reviews.js"></script>
+  <script src="./static/js/productDetailModal.js"></script>
   <script src="./static/js/main.js"></script>
 
 </body>

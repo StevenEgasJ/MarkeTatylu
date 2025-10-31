@@ -5,6 +5,10 @@ const userSchema = new mongoose.Schema({
   isAdmin: { type: Boolean, default: false },
   apellido: { type: String },
   email: { type: String, required: true, unique: true },
+  // Email verification fields
+  emailVerified: { type: Boolean, default: false },
+  emailVerificationToken: { type: String },
+  emailVerificationExpires: { type: Date },
   passwordHash: { type: String, required: true },
   cedula: { type: String },
   telefono: { type: String },

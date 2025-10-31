@@ -6,6 +6,12 @@ const authMiddleware = require('../middleware/auth');
 const Product = require('../models/Product');
 const Order = require('../models/Order');
 const User = require('../models/User');
+const { sendMail } = require('../utils/email');
+
+function escapeHtml(s) {
+  if (!s) return '';
+  return String(s).replace(/[&<>"']/g, function(m){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]); });
+}
 
 // POST /api/checkout - purchase cart items atomically
 router.post('/', authMiddleware, async (req, res) => {
@@ -94,6 +100,23 @@ router.post('/', authMiddleware, async (req, res) => {
 
     await session.commitTransaction();
     session.endSession();
+
+    // Send invoice email to user (best-effort, do not block response)
+    (async () => {
+      try {
+        if (user && user.email) {
+          const base = process.env.APP_BASE_URL || `http://localhost:${process.env.PORT||4000}`;
+          const invoiceLink = `${base}/confirmacion.html?orderId=${order._id}`;
+          const html = `<p>Hola ${escapeHtml(user.nombre || user.email)},</p>
+            <p>Gracias por tu compra. Puedes ver tu factura en el siguiente enlace:</p>
+            <p><a href="${invoiceLink}">Ver factura</a></p>`;
+          const result = await sendMail({ to: user.email, subject: 'Tu compra en Tatylu - Factura', html });
+          if (!result.ok) console.error('Invoice email failed', result.error);
+        }
+      } catch (e) {
+        console.error('Error sending invoice email:', e);
+      }
+    })();
 
     res.json({ success: true, orderId: order._id });
   } catch (err) {

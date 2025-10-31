@@ -12,7 +12,10 @@ const checkoutRouter = require('./routes/checkout');
 const debugRouter = require('./routes/debug');
 const ordersRouter = require('./routes/orders');
 const usersRouter = require('./routes/users');
+const reviewsRouter = require('./routes/reviews');
 const Product = require('./models/Product');
+const User = require('./models/User');
+const bcrypt = require('bcryptjs');
 
 const app = express();
 
@@ -64,10 +67,12 @@ mongoose.connection.on('disconnected', () => console.warn('Mongoose disconnected
 app.use('/api/products', productsRouter);
 app.use('/api/auth', authRouter);
 app.use('/api/cart', cartRouter);
-app.use('/api', adminRouter);
+// Mount admin routes under /api/admin to match frontend expectations
+app.use('/api/admin', adminRouter);
 app.use('/api/checkout', checkoutRouter);
 app.use('/api/orders', ordersRouter);
 app.use('/api/users', usersRouter);
+app.use('/api/reviews', reviewsRouter);
 // Debug routes (only enabled when DEBUG_API=true in env)
 app.use('/api/debug', debugRouter);
 
@@ -114,5 +119,52 @@ async function seedDefaultProducts() {
 
 seedDefaultProducts();
 
+// Seed or promote an admin user on startup (development convenience).
+// Credentials can be overridden with ADMIN_EMAIL and ADMIN_PASS env vars.
+async function seedAdminUser() {
+  try {
+    const adminEmail = (process.env.ADMIN_EMAIL || 'admin@gmail.com').toString().trim().toLowerCase();
+    const adminPass = (process.env.ADMIN_PASS || '123456').toString();
+
+    let user = await User.findOne({ email: adminEmail });
+    if (user) {
+      user.isAdmin = true;
+      // Overwrite password to ensure known credentials for testing/dev
+      const salt = await bcrypt.genSalt(10);
+      user.passwordHash = await bcrypt.hash(adminPass, salt);
+      await user.save();
+      console.log('✅ Admin user promoted/updated:', adminEmail);
+    } else {
+      const salt = await bcrypt.genSalt(10);
+      const passwordHash = await bcrypt.hash(adminPass, salt);
+      const newUser = new User({ nombre: 'Administrador', apellido: '', email: adminEmail, passwordHash, isAdmin: true });
+      await newUser.save();
+      console.log('✅ Admin user created:', adminEmail);
+    }
+  } catch (err) {
+    console.error('Error seeding admin user:', err);
+  }
+}
+
+// Only seed admin after DB connection is established
+mongoose.connection.once('connected', () => {
+  // Run asynchronously, don't block server startup
+  seedAdminUser().catch(err => console.error('seedAdminUser error:', err));
+});
+
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+
+// Verify email transporter on startup and log helpful guidance
+;(async () => {
+  try {
+    const { verifyTransporter } = require('./utils/email');
+    const r = await verifyTransporter();
+    if (!r.ok) {
+      console.warn('Email transporter verification failed. If you expect to send real emails, configure SMTP env vars (SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS).');
+      console.warn('Server is currently configured to use Ethereal or has invalid SMTP settings. Emails may not reach real Gmail accounts.');
+    }
+  } catch (err) {
+    console.error('Could not verify email transporter at startup:', err);
+  }
+})();
