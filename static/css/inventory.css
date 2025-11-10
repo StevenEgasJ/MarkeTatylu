@@ -1,0 +1,77 @@
+.inventory-dashboard {
+    padding: 20px;
+}
+
+.inventory-card {
+    background: white;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.urgency-indicator {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: bold;
+}
+
+.urgency-high {
+    background: #dc3545;
+    color: white;
+}
+
+.urgency-medium {
+    background: #ffc107;
+    color: #333;
+}
+
+.urgency-low {
+    background: #28a745;
+    color: white;
+}
+
+.stock-status {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.stock-bar {
+    flex: 1;
+    height: 8px;
+    background: #e0e0e0;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.stock-bar-fill {
+    height: 100%;
+    transition: width 0.3s ease;
+}
+
+.stock-critical { background: #dc3545; }
+.stock-low { background: #ffc107; }
+.stock-ok { background: #28a745; }
+
+.supplier-rating {
+    color: #ffc107;
+}
+
+.forecast-chart {
+    min-height: 300px;
+    margin: 20px 0;
+}
+
+.po-status {
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+}
+
+.po-pending { background: #ffc107; color: #333; }
+.po-approved { background: #17a2b8; color: white; }
+.po-received { background: #28a745; color: white; }
+.po-cancelled { background: #dc3545; color: white; }

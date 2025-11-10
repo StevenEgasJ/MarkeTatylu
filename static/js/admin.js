@@ -16,6 +16,20 @@ function escapeJsStringSingle(v) {
         .replace(/\n/g, '\\n')
         .replace(/\r/g, '\\r');
 }
+
+// Utility function to escape HTML and prevent XSS
+function escapeHtml(text) {
+    if (text === null || text === undefined) return '';
+    const map = {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+    };
+    return String(text).replace(/[&<>"']/g, m => map[m]);
+}
+
 class AdminPanelManager {
     constructor() {
         this.initializeAdmin();
@@ -46,13 +60,16 @@ class AdminPanelManager {
                     precio: p.precio,
                     categoria: p.categoria,
                     stock: p.stock,
+                    descuento: p.descuento ?? p.desc ?? p.discount ?? 0,
                     imagen: p.imagen,
                     descripcion: p.descripcion,
                     fechaCreacion: p.fechaCreacion || p.createdAt
                 }));
-                // keep server data in-memory only (do NOT persist to localStorage)
+                // keep server data in-memory
                 this._productos = adminProducts;
-                console.log('Admin: productos cargados desde server (in-memory):', adminProducts.length);
+                // TAMBIÉN actualizar localStorage para que el frontend pueda acceder
+                localStorage.setItem('productos', JSON.stringify(adminProducts));
+                console.log('Admin: productos cargados desde server y guardados en localStorage:', adminProducts.length);
             }
         } catch (err) {
             console.warn('No se pudo cargar productos desde server:', err);
@@ -286,12 +303,16 @@ class AdminPanelManager {
     // Verificar productos con stock bajo
     checkLowStock() {
         const productos = this.getProducts();
-        const lowStockProducts = productos.filter(product => (product.stock || 0) <= 5);
+        const lowStockProducts = productos.filter(product => {
+            const stock = Number(product.stock) || 0;
+            return stock > 0 && stock <= 5;
+        });
         
         if (lowStockProducts.length > 0) {
-            const lowStockList = lowStockProducts.map(product => 
-                `<li><strong>${product.nombre}</strong>: ${product.stock || 0} unidades</li>`
-            ).join('');
+            const lowStockList = lowStockProducts.map(product => {
+                const stock = Number(product.stock) || 0;
+                return `<li><strong>${escapeHtml(product.nombre)}</strong>: ${stock} unidades</li>`;
+            }).join('');
             
             Swal.fire({
                 title: '⚠️ Alerta de Stock Bajo',
@@ -340,43 +361,36 @@ class AdminPanelManager {
         try {
             const productos = this.getProducts() || [];
             if (!productos || productos.length === 0) {
-                container.innerHTML = '<div class="text-muted">No hay productos</div>';
+                container.innerHTML = '<div class="text-muted">No hay productos disponibles</div>';
                 return;
             }
 
             // Build a map of productId -> sold count by aggregating in-memory orders (this._pedidos)
             const salesMap = {};
             try {
-                const pedidos = this._pedidos || [];
-                for (const ord of pedidos) {
-                    const items = ord.productos || ord.items || [];
-                    for (const it of items) {
-                        // item may contain one of several id shapes
-                        const pid = String(it.id || it.productId || it._id || it.codigo || it.sku || it.product || '').trim();
-                        const qty = Number(it.cantidad ?? it.qty ?? it.quantity ?? it.cant ?? 0) || 0;
-                        if (!pid) continue;
-                        salesMap[pid] = (salesMap[pid] || 0) + qty;
-                    }
-                }
+                const orders = this._pedidos || [];
+                orders.forEach(order => {
+                    const items = order.productos || order.items || [];
+                    items.forEach(item => {
+                        const id = String(item.id || item.productId || '');
+                        const qty = Number(item.cantidad || item.qty || item.quantity || 0);
+                        salesMap[id] = (salesMap[id] || 0) + qty;
+                    });
+                });
             } catch (e) {
-                console.warn('Error computing sales map from orders:', e);
+                console.warn('Error building sales map:', e);
             }
 
             // Merge product list with sales counts; prefer explicit sold field if present
             const scored = productos.map(p => {
-                const pid = String(p.id || p._id || '').trim();
-                const soldFromProduct = Number(p.sold ?? p.sales ?? p.vendidos ?? 0) || 0;
-                const soldFromOrders = Number(salesMap[pid] || 0);
-                return {
-                    id: pid,
-                    nombre: p.nombre || p.name || 'Producto',
-                    sold: Math.max(soldFromProduct, soldFromOrders)
-                };
+                const id = String(p.id || '');
+                const sold = Number(p.sold || p.ventas || salesMap[id] || 0);
+                return { ...p, sold };
             });
 
             const top = scored.slice().sort((a,b) => b.sold - a.sold).slice(0,5);
             if (top.length === 0 || top.every(t => t.sold === 0)) {
-                container.innerHTML = '<div class="text-muted">No hay ventas registradas</div>';
+                container.innerHTML = '<div class="text-muted">Sin datos de ventas aún</div>';
                 return;
             }
 
@@ -399,7 +413,9 @@ class AdminPanelManager {
             case 'enviado': return 'info';
             case 'entregado': return 'success';
             case 'cancelado': return 'danger';
-            default: return 'warning';
+            case 'preparando': return 'warning';
+            case 'pendiente': return 'secondary';
+            default: return 'secondary';
         }
     }
 
@@ -410,31 +426,39 @@ class AdminPanelManager {
         const productos = this.getProducts();
         const tbody = document.getElementById('productsTable');
         
-        tbody.innerHTML = productos.map(producto => `
-            <tr>
-                <td>${producto.id}</td>
-                <td>
-                    <img src="${producto.imagen}" alt="${producto.nombre}" 
-                         style="width: 50px; height: 50px; object-fit: cover;" class="rounded">
-                </td>
-                <td>${producto.nombre}</td>
-                <td>$${producto.precio.toFixed(2)}</td>
-                <td>${this.getCategoryName(producto.categoria)}</td>
-                <td>
-                    <span class="badge ${producto.stock <= 5 ? 'bg-danger' : producto.stock <= 10 ? 'bg-warning' : 'bg-success'}">
-                        ${producto.stock || 0}
-                    </span>
-                </td>
-                <td>
-                    <button class="btn btn-sm btn-outline-primary me-2" data-action="edit-product" data-id="${escapeHtml(producto.id)}" title="Editar producto">
-                        <i class="fa-solid fa-edit"></i>
-                    </button>
-                    <button class="btn btn-sm btn-outline-danger" data-action="delete-product" data-id="${escapeHtml(producto.id)}" title="Eliminar producto">
-                        <i class="fa-solid fa-trash"></i>
-                    </button>
-                </td>
-            </tr>
-        `).join('');
+        tbody.innerHTML = productos.map(producto => {
+            const stock = Number(producto.stock) || 0;
+            const stockBadgeClass = stock === 0 ? 'bg-danger' : 
+                                   stock <= 5 ? 'bg-danger' : 
+                                   stock <= 10 ? 'bg-warning' : 
+                                   'bg-success';
+            
+            return `
+                <tr>
+                    <td>${escapeHtml(producto.id)}</td>
+                    <td>
+                        <img src="${escapeHtml(producto.imagen)}" alt="${escapeHtml(producto.nombre)}" 
+                             style="width: 50px; height: 50px; object-fit: cover;" class="rounded">
+                    </td>
+                    <td>${escapeHtml(producto.nombre)}</td>
+                    <td>$${Number(producto.precio || 0).toFixed(2)}</td>
+                    <td>${this.getCategoryName(producto.categoria)}</td>
+                    <td>
+                        <span class="badge ${stockBadgeClass}">
+                            ${stock}
+                        </span>
+                    </td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-primary me-2" data-action="edit-product" data-id="${escapeHtml(producto.id)}" title="Editar producto">
+                            <i class="fa-solid fa-edit"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-danger" data-action="delete-product" data-id="${escapeHtml(producto.id)}" title="Eliminar producto">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+            `;
+        }).join('');
     }
 
     // Obtener productos
@@ -468,6 +492,7 @@ class AdminPanelManager {
                     categoria: productData.categoria,
                     stock: parseInt(productData.stock) || 0,
                     imagen: productData.imagen,
+                    descuento: parseFloat(productData.descuento) || 0,
                     descripcion: productData.descripcion || ''
                 };
 
@@ -490,23 +515,22 @@ class AdminPanelManager {
 
     // Editar producto
     editProduct(id) {
-        console.log('editProduct called with ID:', id, 'Type:', typeof id); // Debug
+        console.log('editProduct called with ID:', id, 'Type:', typeof id);
         
         const productos = this.getProducts();
-        console.log('Available products:', productos.map(p => ({ id: p.id, type: typeof p.id, name: p.nombre }))); // Debug
+        console.log('Available products:', productos.map(p => ({ id: p.id, type: typeof p.id, name: p.nombre })));
         
         // Convertir tanto el ID buscado como los IDs de productos a string para comparación
-        const idString = id.toString();
-        const producto = productos.find(p => p.id.toString() === idString);
+        const idString = String(id);
+        const producto = productos.find(p => String(p.id) === idString);
         
-        console.log('Found product:', producto); // Debug
+        console.log('Found product:', producto);
         
         if (!producto) {
             Swal.fire('Error', 'Producto no encontrado', 'error');
             return;
         }
         
-        // Llenar formulario con datos del producto
         // Helper: sanitize strings to remove control chars that can break HTML or scripts
         const sanitize = (v) => {
             if (v === undefined || v === null) return '';
@@ -518,19 +542,27 @@ class AdminPanelManager {
         document.getElementById('productId').value = sanitize(producto.id);
         document.getElementById('productName').value = sanitize(producto.nombre || producto.name || '');
         document.getElementById('productPrice').value = sanitize(producto.precio ?? producto.price ?? 0);
-        // Ensure category select contains the product's category value; if not, add it dynamically
+        
+        // Ensure category select contains the product's category value
         const catSelect = document.getElementById('productCategory');
         const prodCat = sanitize(producto.categoria || producto.category || '');
         if (prodCat) {
             let found = false;
             for (let i = 0; i < catSelect.options.length; i++) {
-                if (String(catSelect.options[i].value) === prodCat) { found = true; break; }
+                if (String(catSelect.options[i].value) === prodCat) { 
+                    found = true; 
+                    break; 
+                }
             }
             if (!found) {
                 const opt = document.createElement('option');
                 opt.value = prodCat;
                 opt.textContent = prodCat;
-                try { catSelect.appendChild(opt); } catch(e){ catSelect.options[catSelect.options.length] = opt; }
+                try { 
+                    catSelect.appendChild(opt); 
+                } catch(e){ 
+                    catSelect.options[catSelect.options.length] = opt; 
+                }
             }
             catSelect.value = prodCat;
         } else {
@@ -540,31 +572,46 @@ class AdminPanelManager {
         document.getElementById('productStock').value = sanitize(producto.stock ?? producto.cant ?? 0) || 0;
         document.getElementById('productImage').value = sanitize(producto.imagen || producto.image || producto.imageUrl || '');
         document.getElementById('productDescription').value = sanitize(producto.descripcion || producto.description || '');
+        // Fill discount field if present
+        try {
+            const discountEl = document.getElementById('productDiscount');
+            if (discountEl) discountEl.value = sanitize(producto.descuento ?? producto.desc ?? producto.discount ?? 0);
+        } catch (e) { /* ignore */ }
         
-        console.log('Form filled with product data'); // Debug
+        console.log('Form filled with product data');
         
         // Mostrar preview de imagen si existe
         if (producto.imagen) {
-            showImagePreview(producto.imagen);
+            if (typeof showImagePreview === 'function') {
+                showImagePreview(producto.imagen);
+            }
         } else {
-            clearImagePreview();
+            if (typeof clearImagePreview === 'function') {
+                clearImagePreview();
+            }
         }
         
         // Cambiar título del modal
-        document.querySelector('#productModal .modal-title').textContent = 'Editar Producto';
+        const modalTitle = document.querySelector('#productModal .modal-title');
+        if (modalTitle) modalTitle.textContent = 'Editar Producto';
         
-        console.log('About to show modal'); // Debug
+        console.log('About to show modal');
         
-        // Mostrar modal (protegido)
+        // Mostrar modal
         try {
-            const modal = new bootstrap.Modal(document.getElementById('productModal'));
+            const modalEl = document.getElementById('productModal');
+            if (!modalEl) {
+                console.error('Modal element not found');
+                Swal.fire('Error', 'No se pudo abrir el modal de edición', 'error');
+                return;
+            }
+            const modal = new bootstrap.Modal(modalEl);
             modal.show();
+            console.log('Modal shown successfully');
         } catch (e) {
             console.error('Error mostrando modal de producto:', e);
             Swal.fire('Error', 'No se pudo abrir el modal de edición. Revisa la consola para más detalles.', 'error');
         }
-        
-        console.log('Modal should be visible now'); // Debug
     }
 
     // Actualizar producto
@@ -580,6 +627,7 @@ class AdminPanelManager {
                     categoria: productData.categoria,
                     stock: parseInt(productData.stock) || 0,
                     imagen: productData.imagen,
+                    descuento: parseFloat(productData.descuento) || 0,
                     descripcion: productData.descripcion || ''
                 };
 
@@ -600,30 +648,48 @@ class AdminPanelManager {
 
     // Eliminar producto
     deleteProduct(id) {
+        console.log('deleteProduct called with ID:', id);
+        
         Swal.fire({
             title: '¿Eliminar producto?',
             text: 'Esta acción no se puede deshacer',
             icon: 'warning',
             showCancelButton: true,
             confirmButtonText: 'Sí, eliminar',
-            cancelButtonText: 'Cancelar'
+            cancelButtonText: 'Cancelar',
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6'
         }).then((result) => {
             if (result.isConfirmed) {
                 (async () => {
-                    Swal.fire({ title: 'Eliminando...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+                    Swal.fire({ 
+                        title: 'Eliminando...', 
+                        allowOutsideClick: false, 
+                        didOpen: () => Swal.showLoading() 
+                    });
                     try {
                         if (window.api && typeof window.api.deleteProduct === 'function') {
                             await window.api.deleteProduct(id);
                             // Refresh in-memory cache from server
                             await this.fetchProducts();
                             this.showProducts();
-                            Swal.fire({ title: '¡Eliminado!', text: 'El producto ha sido eliminado', icon: 'success', timer: 2000 });
+                            Swal.fire({ 
+                                title: '¡Eliminado!', 
+                                text: 'El producto ha sido eliminado', 
+                                icon: 'success', 
+                                timer: 2000,
+                                showConfirmButton: false
+                            });
                         } else {
                             throw new Error('API client no disponible');
                         }
                     } catch (err) {
                         console.error('Error deleting product on server:', err);
-                        Swal.fire({ title: 'Error', text: 'No se pudo eliminar el producto en el servidor. Asegúrate de que el backend esté activo.', icon: 'error' });
+                        Swal.fire({ 
+                            title: 'Error', 
+                            text: 'No se pudo eliminar el producto en el servidor. Asegúrate de que el backend esté activo.', 
+                            icon: 'error' 
+                        });
                     }
                 })();
             }
@@ -757,6 +823,7 @@ class AdminPanelManager {
                 precio: p.precio,
                 categoria: p.categoria,
                 stock: p.stock,
+                descuento: p.descuento ?? p.desc ?? p.discount ?? 0,
                 imagen: p.imagen,
                 descripcion: p.descripcion,
                 fechaCreacion: p.fechaCreacion || p.createdAt
@@ -966,18 +1033,19 @@ class AdminPanelManager {
                         ${order.estado || 'pendiente'}
                     </span>
                 </td>
-                <td>                <button class="btn btn-sm btn-outline-primary me-1" onclick="adminManager.viewOrder('${order.id || order.numeroOrden}')" title="Ver detalles">
-                    <i class="fa-solid fa-eye"></i>
-                </button>
-                <button class="btn btn-sm btn-outline-warning me-1" onclick="adminManager.changeOrderStatus('${order.id || order.numeroOrden}')" title="Cambiar estado">
-                    <i class="fa-solid fa-edit"></i>
-                </button>
-                <button class="btn btn-sm btn-outline-info me-1" onclick="adminManager.editInvoice('${order.id || order.numeroOrden}')" title="Editar factura completa">
-                    <i class="fa-solid fa-file-invoice-dollar"></i>
-                </button>
-                <button class="btn btn-sm btn-outline-danger" onclick="adminManager.deleteOrder('${order.id || order.numeroOrden}')" title="Eliminar pedido">
-                    <i class="fa-solid fa-trash"></i>
-                </button>
+                <td>
+                    <button class="btn btn-sm btn-outline-primary me-1" onclick="adminManager.viewOrder('${escapeJsStringSingle(order.id || order.numeroOrden)}')" title="Ver detalles">
+                        <i class="fa-solid fa-eye"></i>
+                    </button>
+                    <button class="btn btn-sm btn-outline-warning me-1" onclick="adminManager.changeOrderStatus('${escapeJsStringSingle(order.id || order.numeroOrden)}')" title="Cambiar estado">
+                        <i class="fa-solid fa-edit"></i>
+                    </button>
+                    <button class="btn btn-sm btn-outline-info me-1" onclick="adminManager.editInvoice('${escapeJsStringSingle(order.id || order.numeroOrden)}')" title="Editar factura completa">
+                        <i class="fa-solid fa-file-invoice-dollar"></i>
+                    </button>
+                    <button class="btn btn-sm btn-outline-danger" onclick="adminManager.deleteOrder('${escapeJsStringSingle(order.id || order.numeroOrden)}')" title="Eliminar pedido">
+                        <i class="fa-solid fa-trash"></i>
+                    </button>
                 </td>
             </tr>
         `).join('');
@@ -1228,59 +1296,79 @@ class AdminPanelManager {
 
     // Editar factura completa
     editInvoice(orderId) {
-    // Buscar la orden en la caché en memoria (no usar localStorage)
-    const pedidos = this._pedidos || [];
-    let order = pedidos.find(o => (o.id || o.numeroOrden) === orderId);
+        // Buscar la orden en la caché en memoria (no usar localStorage)
+        const pedidos = this._pedidos || [];
+        let order = pedidos.find(o => (o.id || o.numeroOrden) === orderId);
         
         if (!order) {
             Swal.fire('Error', 'Factura no encontrada', 'error');
             return;
         }
 
-    // Cargar productos disponibles desde la caché en memoria
-    const productos = this._productos || [];
+        // Cargar productos disponibles desde la caché en memoria
+        const productos = this._productos || [];
         
         // Productos actuales de la orden
         const productosOrden = order.productos || [];
         
         // Crear HTML para productos
-        const productosHtml = productosOrden.map((prod, index) => `
-            <div class="producto-item border rounded p-3 mb-2" data-index="${index}">
-                <div class="row align-items-center">
-                    <div class="col-md-4">
-                        <select class="form-select producto-select" onchange="adminManager.updateProductInfo(${index})">
-                            <option value="">Seleccionar producto</option>
-                            ${productos.map(p => `
-                                <option value="${p.id}" data-precio="${p.precio}" data-nombre="${p.nombre}" 
-                                        ${p.id == prod.id ? 'selected' : ''}>
-                                    ${p.nombre} - $${p.precio}
-                                </option>
-                            `).join('')}
-                        </select>
-                    </div>
-                    <div class="col-md-2">
-                        <input type="number" class="form-control cantidad-input" 
-                               placeholder="Cant." min="1" value="${prod.cantidad || 1}"
-                               onchange="adminManager.calcularSubtotalProducto(${index})">
-                    </div>
-                    <div class="col-md-2">
-                        <input type="number" class="form-control precio-input" 
-                               placeholder="Precio" step="0.01" value="${prod.precio || 0}"
-                               onchange="adminManager.calcularSubtotalProducto(${index})">
-                    </div>
-                    <div class="col-md-2">
-                        <input type="number" class="form-control subtotal-input" 
-                               placeholder="Subtotal" step="0.01" value="${(prod.precio * prod.cantidad) || 0}" readonly>
-                    </div>
-                    <div class="col-md-2">
-                        <button type="button" class="btn btn-outline-danger btn-sm" 
-                                onclick="adminManager.eliminarProductoFactura(${index})">
-                            <i class="fa-solid fa-trash"></i>
-                        </button>
+        const productosHtml = productosOrden.map((prod, index) => {
+            const productoId = escapeHtml(prod.id || '');
+            const productoPrecio = escapeHtml(prod.precio || 0);
+            const productoNombre = escapeHtml(prod.nombre || '');
+            const productoCantidad = escapeHtml(prod.cantidad || 1);
+            
+            return `
+                <div class="producto-item border rounded p-3 mb-2" data-index="${index}">
+                    <div class="row align-items-center">
+                        <div class="col-md-4">
+                            <select class="form-select producto-select" onchange="adminManager.updateProductInfo(${index})">
+                                <option value="">Seleccionar producto</option>
+                                ${productos.map(p => {
+                                    const selected = p.id == prod.id ? 'selected' : '';
+                                    return `<option value="${escapeHtml(p.id)}" data-precio="${escapeHtml(p.precio)}" data-nombre="${escapeHtml(p.nombre)}" ${selected}>${escapeHtml(p.nombre)} - $${escapeHtml(p.precio)}</option>`;
+                                }).join('')}
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <input type="number" class="form-control cantidad-input" 
+                                   placeholder="Cant." min="1" value="${productoCantidad}"
+                                   onchange="adminManager.calcularSubtotalProducto(${index})">
+                        </div>
+                        <div class="col-md-2">
+                            <input type="number" class="form-control precio-input" 
+                                   placeholder="Precio" step="0.01" value="${productoPrecio}"
+                                   onchange="adminManager.calcularSubtotalProducto(${index})">
+                        </div>
+                        <div class="col-md-2">
+                            <input type="number" class="form-control subtotal-input" 
+                                   placeholder="Subtotal" step="0.01" value="${(prod.precio * prod.cantidad) || 0}" readonly>
+                        </div>
+                        <div class="col-md-2">
+                            <button type="button" class="btn btn-outline-danger btn-sm" 
+                                    onclick="adminManager.eliminarProductoFactura(${index})">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
+                        </div>
                     </div>
                 </div>
-            </div>
-        `).join('');
+            `;
+        }).join('');
+
+        // Escapar valores para uso seguro en HTML
+        const clienteNombre = escapeHtml(order.cliente?.nombre || '');
+        const clienteEmail = escapeHtml(order.cliente?.email || '');
+        const clienteTelefono = escapeHtml(order.cliente?.telefono || '');
+        const clienteCedula = escapeHtml(order.cliente?.cedula || '');
+        const entregaDireccion = escapeHtml(order.entrega?.direccion || '');
+        const entregaCiudad = escapeHtml(order.entrega?.ciudad || '');
+        const entregaProvincia = escapeHtml(order.entrega?.provincia || '');
+        const entregaCodigoPostal = escapeHtml(order.entrega?.codigoPostal || '');
+        const entregaInstrucciones = escapeHtml(order.entrega?.instrucciones || '');
+        const subtotal = escapeHtml(order.totales?.subtotal || 0);
+        const envio = escapeHtml(order.totales?.envio || 0);
+        const iva = escapeHtml(order.totales?.iva || 0);
+        const total = escapeHtml(order.totales?.total || 0);
 
         // Mostrar formulario de edición completo
         Swal.fire({
@@ -1292,18 +1380,18 @@ class AdminPanelManager {
                         <h6 class="border-bottom pb-2"><i class="fa-solid fa-user me-2"></i>Datos del Cliente</h6>
                         <div class="row">
                             <div class="col-md-6">
-                                <input id="editClienteName" class="form-control mb-2" placeholder="Nombre completo" value="${order.cliente?.nombre || ''}">
+                                <input id="editClienteName" class="form-control mb-2" placeholder="Nombre completo" value="${clienteNombre}">
                             </div>
                             <div class="col-md-6">
-                                <input id="editClienteEmail" class="form-control mb-2" placeholder="Email" value="${order.cliente?.email || ''}">
+                                <input id="editClienteEmail" class="form-control mb-2" placeholder="Email" value="${clienteEmail}">
                             </div>
                         </div>
                         <div class="row">
                             <div class="col-md-6">
-                                <input id="editClienteTelefono" class="form-control mb-2" placeholder="Teléfono" value="${order.cliente?.telefono || ''}">
+                                <input id="editClienteTelefono" class="form-control mb-2" placeholder="Teléfono" value="${clienteTelefono}">
                             </div>
                             <div class="col-md-6">
-                                <input id="editClienteCedula" class="form-control mb-2" placeholder="Cédula" value="${order.cliente?.cedula || ''}">
+                                <input id="editClienteCedula" class="form-control mb-2" placeholder="Cédula" value="${clienteCedula}">
                             </div>
                         </div>
                     </div>
@@ -1311,18 +1399,18 @@ class AdminPanelManager {
                     <!-- Dirección y Entrega -->
                     <div class="mb-4">
                         <h6 class="border-bottom pb-2"><i class="fa-solid fa-map-marker-alt me-2"></i>Dirección y Entrega</h6>
-                        <textarea id="editDireccion" class="form-control mb-2" rows="2" placeholder="Dirección completa">${order.entrega?.direccion || ''}</textarea>
+                        <textarea id="editDireccion" class="form-control mb-2" rows="2" placeholder="Dirección completa">${entregaDireccion}</textarea>
                         <div class="row">
                             <div class="col-md-6">
-                                <input id="editCiudad" class="form-control mb-2" placeholder="Ciudad" value="${order.entrega?.ciudad || ''}">
+                                <input id="editCiudad" class="form-control mb-2" placeholder="Ciudad" value="${entregaCiudad}">
                             </div>
                             <div class="col-md-6">
-                                <input id="editProvincia" class="form-control mb-2" placeholder="Provincia" value="${order.entrega?.provincia || ''}">
+                                <input id="editProvincia" class="form-control mb-2" placeholder="Provincia" value="${entregaProvincia}">
                             </div>
                         </div>
                         <div class="row">
                             <div class="col-md-6">
-                                <input id="editCodigoPostal" class="form-control mb-2" placeholder="Código Postal" value="${order.entrega?.codigoPostal || ''}">
+                                <input id="editCodigoPostal" class="form-control mb-2" placeholder="Código Postal" value="${entregaCodigoPostal}">
                             </div>
                             <div class="col-md-6">
                                 <select id="editMetodoEntrega" class="form-select">
@@ -1331,7 +1419,7 @@ class AdminPanelManager {
                                 </select>
                             </div>
                         </div>
-                        <textarea id="editInstrucciones" class="form-control" rows="2" placeholder="Instrucciones de entrega">${order.entrega?.instrucciones || ''}</textarea>
+                        <textarea id="editInstrucciones" class="form-control" rows="2" placeholder="Instrucciones de entrega">${entregaInstrucciones}</textarea>
                     </div>
                     
                     <!-- Productos -->
@@ -1380,21 +1468,21 @@ class AdminPanelManager {
                         <div class="row">
                             <div class="col-md-4">
                                 <label class="form-label">Subtotal:</label>
-                                <input id="editSubtotal" class="form-control" type="number" step="0.01" value="${order.totales?.subtotal || 0}" readonly>
+                                <input id="editSubtotal" class="form-control" type="number" step="0.01" value="${subtotal}" readonly>
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label">Envío:</label>
-                                <input id="editEnvio" class="form-control" type="number" step="0.01" value="${order.totales?.envio || 0}" onchange="adminManager.recalcularTotales()">
+                                <input id="editEnvio" class="form-control" type="number" step="0.01" value="${envio}" onchange="adminManager.recalcularTotales()">
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label">IVA (15%):</label>
-                                <input id="editIva" class="form-control" type="number" step="0.01" value="${order.totales?.iva || 0}" readonly>
+                                <input id="editIva" class="form-control" type="number" step="0.01" value="${iva}" readonly>
                             </div>
                         </div>
                         <div class="row mt-2">
                             <div class="col-md-12">
                                 <label class="form-label"><strong>Total:</strong></label>
-                                <input id="editTotal" class="form-control fw-bold" type="number" step="0.01" value="${order.totales?.total || 0}" readonly>
+                                <input id="editTotal" class="form-control fw-bold" type="number" step="0.01" value="${total}" readonly>
                             </div>
                         </div>
                     </div>
@@ -1432,8 +1520,6 @@ class AdminPanelManager {
         setTimeout(() => this.recalcularTotales(), 100);
     }
 
-    // Funciones auxiliares para edición de facturas
-    
     // Recopilar todos los datos de la factura
     recopilarDatosFactura(originalOrder) {
         // Recopilar productos del formulario
@@ -1645,6 +1731,7 @@ class AdminPanelManager {
     }
 
     // Guardar cambios en la factura (versión mejorada)
+
     saveInvoiceChanges(orderId, updatedData) {
         // Persist invoice changes to server only; do not write to localStorage.
         (async () => {
@@ -1856,6 +1943,7 @@ function saveProduct() {
             categoria: categoryField.value,
             stock: stockField.value,
             imagen: imageField.value,
+            descuento: (document.getElementById('productDiscount') ? document.getElementById('productDiscount').value : 0),
             descripcion: descriptionField.value
         };
         

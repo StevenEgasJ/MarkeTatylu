@@ -23,9 +23,23 @@
     }
     .coupon-row .form-control { background: rgba(255,255,255,0.8); }
     .btn-order {
-      background: #8B5E3C; /* warm accent */
-      border-color: #7a5130;
-      color: #fff;
+      /* Light café tone requested */
+      background: #C79A6C; /* light coffee */
+      border-color: #b07f52;
+      color: #2b1a12; /* dark brown text for good contrast on lighter background */
+    }
+    .btn-order:hover, .btn-order:focus {
+      background: #b07f52;
+      border-color: #9b6036;
+      color: #fff; /* switch to white on hover for clearer CTA */
+    }
+    .btn-order:disabled, .btn-order[disabled] {
+      background: #e7d6c7;
+      border-color: #d3c0aa;
+      color: #7a5b48;
+      opacity: 1;
+      cursor: not-allowed;
+      box-shadow: none;
     }
     .discount-line { color: #0b5; font-weight: 600; }
   </style>
@@ -131,13 +145,13 @@
           <div id="inline-summary-content"></div>
 
           <div class="coupon-row d-flex gap-2 align-items-center mb-3">
-            <input id="summary-coupon" class="form-control" placeholder="Código de cupón (ej: DESC10)">
-            <button id="apply-coupon" class="btn btn-outline-dark">Aplicar</button>
+            <input id="summary-points" class="form-control" placeholder="Ingrese puntos a usar (ej: 100)">
+            <button id="apply-points" class="btn btn-outline-dark">Aplicar puntos</button>
           </div>
 
           <hr class="summary-hr">
 
-          <div class="d-grid gap-2">
+          <div id="place-order-wrap" class="d-grid gap-2">
             <button id="place-order" class="btn btn-order btn-lg" disabled>Confirmar pago</button>
             <button id="checkout-cancel" class="btn btn-secondary">Cancelar</button>
           </div>

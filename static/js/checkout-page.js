@@ -308,7 +308,7 @@ function buildAccordion(){
           </div>
 
           <div class="d-flex justify-content-end">
-            <button type="button" class="btn btn-secondary" id="shipping-back">Atrás</button>
+            <button type="button" class="btn btn-secondary" id="shipping-back">Continuar</button>
           </div>
         </div>
       </div>
@@ -320,8 +320,9 @@ function renderSummary(){
   const carrito = JSON.parse(localStorage.getItem('carrito')||'[]');
   const totals = typeof calculateTotalsWithTax === 'function' ? calculateTotalsWithTax(carrito) : { subtotal:0, iva:0, envio:0, total:0 };
 
-  // Coupon handling (stored in localStorage under 'checkoutCoupon')
-  const couponCode = localStorage.getItem('checkoutCoupon') || '';
+  // Loyalty points redemption (stored in localStorage under 'checkoutLoyalty')
+  // checkoutLoyalty is JSON: { pointsRedeemed: number, discountApplied: number }
+  const loyaltyRaw = localStorage.getItem('checkoutLoyalty') || '';
   let discountAmount = 0;
   let discountLabel = '';
   // Determine shipping cost based on selected shipping option saved from cart or chosen here
@@ -340,26 +341,35 @@ function renderSummary(){
     }
   }catch(e){ /* ignore */ }
 
-  if (couponCode === 'DESC10') {
-    discountAmount = parseFloat((totals.subtotal * 0.10).toFixed(2));
-    discountLabel = 'Descuento (10%)';
-  } else if (couponCode === 'ENVIOGRATIS') {
-    discountAmount = 0;
-    envioFinal = 0.00;
-    discountLabel = 'Descuento envío';
+  if (loyaltyRaw) {
+    try {
+      const loyaltyObj = JSON.parse(loyaltyRaw);
+      if (loyaltyObj && Number(loyaltyObj.discountApplied)) {
+        discountAmount = parseFloat(Number(loyaltyObj.discountApplied).toFixed(2));
+        discountLabel = 'Descuento (Puntos)';
+      }
+    } catch (e) { /* ignore parse errors */ }
   }
 
   const totalAntes = parseFloat((totals.subtotal + totals.iva + envioFinal - discountAmount).toFixed(2));
+
+  let pointsInfo = '';
+  if (discountAmount) {
+    try {
+      const o = JSON.parse(localStorage.getItem('checkoutLoyalty')||'{}');
+      pointsInfo = `<div class="text-muted small mt-2">Puntos canjeados: <strong>${(o.pointsRedeemed||0)}</strong></div>`;
+    } catch(e){ pointsInfo = ''; }
+  }
 
   const content = `
     <div class="mb-2"><strong>Artículos:</strong> ${totals.itemCount||carrito.length}</div>
     <div class="row"><div class="col-8">Subtotal</div><div class="col-4 text-end">${formatMoney(totals.subtotal)}</div></div>
     <div class="row"><div class="col-8">Envío y Manejo</div><div class="col-4 text-end">${formatMoney(envioFinal)}</div></div>
     <div class="row"><div class="col-8">Impuesto estimado</div><div class="col-4 text-end">${formatMoney(totals.iva)}</div></div>
-    ${ couponCode ? `<div class="row"><div class="col-8 discount-line">${discountLabel}</div><div class="col-4 text-end discount-line">-${formatMoney(discountAmount)}</div></div>` : '' }
+  ${ discountAmount ? `<div class="row"><div class="col-8 discount-line">${discountLabel}</div><div class="col-4 text-end discount-line">-${formatMoney(discountAmount)}</div></div>` : '' }
     <hr class="summary-hr">
     <div class="row"><div class="col-8"><strong>Total</strong></div><div class="col-4 text-end"><strong>${formatMoney(totalAntes)}</strong></div></div>
-    ${ couponCode ? `<div class="text-muted small mt-2">Cupón aplicado: <strong>${couponCode}</strong></div>` : '' }
+  ${ pointsInfo }
   `;
 
   document.getElementById('inline-summary-content').innerHTML = content;
@@ -623,16 +633,105 @@ function wirePageEvents(){
     el.addEventListener('change', (e)=>{ clearInvalid(e.target); updateFinalButtonState(); });
   });
 
-  // Coupon apply handler
-  const applyBtn = document.getElementById('apply-coupon');
-  if (applyBtn) {
-    applyBtn.addEventListener('click', () => {
+  // Apply points handler (replaces coupon UI). Also keep backward-compatible coupon button if present.
+  const applyPointsBtn = document.getElementById('apply-points');
+  if (applyPointsBtn) {
+    applyPointsBtn.addEventListener('click', async () => {
+      const inputEl = document.getElementById('summary-points');
+      const raw = inputEl ? (inputEl.value||'').trim() : '';
+      const pts = raw === '' ? 0 : parseInt(raw, 10);
+
+      // If input empty or zero -> remove any applied redemption
+      if (!pts) {
+        localStorage.removeItem('checkoutLoyalty');
+        renderSummary();
+        Swal.fire({ toast:true, position:'top-end', icon:'info', title: 'Canje eliminado', showConfirmButton:false, timer:1200 });
+        return;
+      }
+
+      // Validate order total minimum ($10)
+      const carrito = JSON.parse(localStorage.getItem('carrito')||'[]');
+      const totals = typeof calculateTotalsWithTax === 'function' ? calculateTotalsWithTax(carrito) : { subtotal:0, iva:0, envio:0, total:0 };
+      // determine envio as in renderSummary
+      let envioFinal = totals.envio;
+      try{
+        const selectedRaw = localStorage.getItem('selectedShipping');
+        if(selectedRaw){
+          let token = String(selectedRaw || '').toLowerCase();
+          token = token.replace(/^ship[-_]?/, '');
+          token = token.replace(/^ci_ship[-_]?/, '');
+          if(token === 'express') envioFinal = 2.00;
+          else if(token === 'standard') envioFinal = 1.00;
+          else if(token === 'pickup') envioFinal = 0.00;
+        }
+      }catch(e){ }
+
+      const grand = parseFloat((totals.subtotal + totals.iva + envioFinal).toFixed(2));
+      if (grand < 10.00) {
+        Swal.fire({ icon:'error', title:'No elegible', text:'Los puntos solo se pueden aplicar en compras de $10.00 o más' });
+        return;
+      }
+
+      // Require authenticated user (loyalty stored per email)
+      const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+      const userEmail = currentUser.email || localStorage.getItem('userEmail') || '';
+      if (!userEmail) {
+        Swal.fire({ icon:'warning', title:'Inicia sesión', text:'Debes iniciar sesión para canjear puntos' });
+        return;
+      }
+
+      if (!window.loyaltyManager || typeof window.loyaltyManager.redeemPoints !== 'function') {
+        Swal.fire({ icon:'error', title:'Función no disponible', text:'El sistema de puntos no está disponible actualmente' });
+        return;
+      }
+
+      // Basic client-side checks against available points
+      try {
+        const summary = window.loyaltyManager.getLoyaltySummary(userEmail);
+        if (!summary || typeof summary.points !== 'number' || pts > summary.points) {
+          Swal.fire({ icon:'error', title:'Puntos insuficientes', text:'No tienes suficientes puntos para ese canje' });
+          return;
+        }
+        const minBlock = window.loyaltyManager.config.pointsToDiscount || 100;
+        if (pts < minBlock) {
+          Swal.fire({ icon:'error', title:'Cantidad mínima', text:`Mínimo ${minBlock} puntos para canjear` });
+          return;
+        }
+        if (pts % minBlock !== 0) {
+          Swal.fire({ icon:'error', title:'Múltiplos requeridos', text:`Ingresa un múltiplo de ${minBlock} puntos` });
+          return;
+        }
+      } catch (e) {
+        console.warn('Loyalty summary check failed', e);
+      }
+
+      // Attempt redemption
+      try {
+        const res = window.loyaltyManager.redeemPoints(userEmail, pts);
+        if (res && res.success) {
+          const payload = { pointsRedeemed: res.pointsRedeemed || pts, discountApplied: res.discount || 0 };
+          localStorage.setItem('checkoutLoyalty', JSON.stringify(payload));
+          renderSummary();
+          Swal.fire({ toast:true, position:'top-end', icon:'success', title:`${formatMoney(res.discount)} aplicados usando ${res.pointsRedeemed} puntos`, showConfirmButton:false, timer:1600 });
+        } else {
+          Swal.fire({ icon:'error', title:'Canje fallido', text: (res && res.message) ? res.message : 'No se pudo canjear puntos' });
+        }
+      } catch (err) {
+        console.error('redeemPoints error', err);
+        Swal.fire({ icon:'error', title:'Error', text:'Ocurrió un error al canjear puntos' });
+      }
+    });
+  }
+
+  // Backwards-compatible coupon button (if still present)
+  const legacyApplyBtn = document.getElementById('apply-coupon');
+  if (legacyApplyBtn) {
+    legacyApplyBtn.addEventListener('click', () => {
       const codeEl = document.getElementById('summary-coupon');
       const code = codeEl ? (codeEl.value||'').trim() : '';
       const result = applyCouponCode(code);
-      // small feedback
       if (result.ok) {
-        try { codeEl.classList.remove('is-invalid'); } catch(e){}
+        try { if(codeEl) codeEl.classList.remove('is-invalid'); } catch(e){}
         renderSummary();
         Swal.fire({ toast:true, position:'top-end', icon:'success', title: result.message, showConfirmButton:false, timer:1400 });
       } else {
@@ -773,8 +872,27 @@ function wirePageEvents(){
   });
 
   document.getElementById('shipping-back').addEventListener('click', ()=>{
-    document.getElementById('collapseThree').classList.remove('show');
-    document.getElementById('collapseTwo').classList.add('show');
+    // Instead of going back to payment, scroll/focus to the final Confirm button area
+    const placeBtn = document.getElementById('place-order');
+    const placeWrap = document.getElementById('place-order-wrap');
+    const target = placeBtn || placeWrap;
+    if (target) {
+      try {
+        target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      } catch(e){}
+      // If the real button is disabled it cannot receive focus in many browsers,
+      // so focus the wrapper (make it focusable) as fallback and give the button a clear outline.
+      setTimeout(()=>{
+        try {
+          if (placeBtn && !placeBtn.disabled) {
+            placeBtn.focus();
+          } else if (placeWrap) {
+            if (!placeWrap.hasAttribute('tabindex')) placeWrap.setAttribute('tabindex','-1');
+            placeWrap.focus();
+          }
+        } catch(e){}
+      }, 180);
+    }
   });
 
   // Extract the place-order logic into a callable function so wrapper clicks can invoke it
@@ -871,6 +989,19 @@ function wirePageEvents(){
       adjustedTotals.total = parseFloat((adjustedTotals.subtotal + adjustedTotals.iva + adjustedTotals.envio).toFixed(2));
     }
 
+    // Apply loyalty redemption if present (checkoutLoyalty stored by apply-points)
+    try {
+      const loyaltyRaw = localStorage.getItem('checkoutLoyalty');
+      if (loyaltyRaw) {
+        const loyaltyObj = JSON.parse(loyaltyRaw);
+        const discount = Number(loyaltyObj.discountApplied || 0);
+        if (discount > 0) {
+          adjustedTotals.discount = parseFloat(discount.toFixed(2));
+          adjustedTotals.total = parseFloat((adjustedTotals.subtotal + adjustedTotals.iva + (adjustedTotals.envio||0) - adjustedTotals.discount).toFixed(2));
+        }
+      }
+    } catch (e) { /* ignore */ }
+
     // Ensure the shipping cost is set based on selectedShipping token (so order totals include it)
     try{
       const raw = localStorage.getItem('selectedShipping');
@@ -899,6 +1030,14 @@ function wirePageEvents(){
       comentarios: ''
     };
 
+    // Attach loyalty metadata into invoiceData so generateOrder/save includes it
+    try {
+      const loyaltyRaw2 = localStorage.getItem('checkoutLoyalty');
+      if (loyaltyRaw2) {
+        invoiceData.loyaltyRedemption = JSON.parse(loyaltyRaw2);
+      }
+    } catch(e) { /* ignore */ }
+
     // If user provided additional reference in manual mode, include it in comments
     if (additionalRef) {
       invoiceData.comentarios = `Ref: ${additionalRef}`;
@@ -906,91 +1045,179 @@ function wirePageEvents(){
 
   const order = generateOrder(carrito, userData, { address: { full: `${shipping.street}` } }, adjustedTotals, invoiceData);
 
-    saveOrderToHistory(order);
-    localStorage.removeItem('carrito');
-    if(typeof actualizarCarritoUI === 'function') actualizarCarritoUI();
+    // Try to persist the order on the server so stock is decremented in MongoDB.
+    let serverOrderId = null;
+    try {
+      const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+      if (token && window.api && typeof window.api.checkout === 'function') {
+        // Resolve canonical product IDs where possible
+        const resolvedItems = (carrito || []).map(item => {
+          let resolvedId = item.id;
+          try {
+            const pm = window.productManager;
+            if (pm && typeof pm.getProductById === 'function') {
+              const pmProduct = pm.getProductById(item.id);
+              if (pmProduct && pmProduct.id) resolvedId = pmProduct.id;
+            }
+          } catch(e) { /* ignore */ }
+          return { id: resolvedId, cantidad: Number(item.cantidad || item.qty || 0) };
+        });
 
-    await showFinalInvoice(order);
+        const payload = {
+          items: resolvedItems,
+          resumen: adjustedTotals,
+          shipping: {
+            direccion: shipping.street,
+            ciudad: '',
+            provincia: '',
+            ubicacionCompleta: {}
+          }
+        };
 
-    // go to purchases page
-    window.location.href = 'compras.html';
+        // Call server checkout endpoint (requires auth)
+        const res = await window.api.checkout(payload);
+        if (res && res.orderId) {
+          serverOrderId = res.orderId;
+          order.id = serverOrderId;
+          order.syncedWithServer = true;
+          console.log('✅ Order persisted on server with id', serverOrderId);
+        } else {
+          console.warn('⚠️ Server checkout returned no orderId:', res);
+        }
+      }
+    } catch (err) {
+      console.warn('⚠️ Server checkout failed, falling back to local save:', err);
+    }
+
+    // If server processed the order, refresh products from server to reflect updated stock.
+    if (serverOrderId) {
+      try {
+        if (window.productManager && typeof window.productManager.loadProducts === 'function') {
+          await window.productManager.loadProducts();
+          console.log('🔄 Products refreshed from server after checkout');
+        }
+      } catch (e) { console.warn('Could not refresh products after server checkout', e); }
+
+      // Save and cleanup
+      saveOrderToHistory(order);
+      try { await showFinalInvoice(order); } catch(e){}
+      localStorage.removeItem('carrito');
+      if(typeof actualizarCarritoUI === 'function') actualizarCarritoUI();
+      // DO NOT redirect automatically — keep user on the checkout page so they can choose options
+      return;
+    }
+
+    // If we reach here, server persistence didn't happen (guest checkout or error). Fall back to local handling
+    // Reduce local stock so UI reflects the purchase
+    try {
+      if (window.productManager && typeof window.productManager.reduceStock === 'function') {
+        await window.productManager.reduceStock(carrito);
+      }
+    } catch (e) { console.warn('Local stock reduction failed:', e); }
+
+  // Save order locally as backup
+  saveOrderToHistory(order);
+  localStorage.removeItem('carrito');
+  if(typeof actualizarCarritoUI === 'function') actualizarCarritoUI();
+
+  await showFinalInvoice(order);
+
+  // DO NOT redirect automatically — keep user on the checkout page so they can choose options
   }
 
   // Helper: show a SweetAlert2 modal listing missing/invalid fields in a friendly way
   function showMissingFieldsNotification(){
-    const messages = [];
-    // Address
-    const manual = document.getElementById('manual-location-block');
-    if (manual && manual.style.display === 'block'){
-      const main = (document.getElementById('ci_main_street') || {}).value || '';
-      const sec = (document.getElementById('ci_secondary_street') || {}).value || '';
-      const house = (document.getElementById('ci_house_number') || {}).value || '';
-      if(!main) messages.push('Calle principal');
-      if(!sec) messages.push('Calle secundaria');
-      if(!house) messages.push('Número de casa/departamento');
-    } else {
-      const street = (document.getElementById('ci_street') || {}).value || '';
-      if(!street) messages.push('Dirección de entrega');
-    }
-
+    // First, run the inline field-level validation so fields get red outlines and feedback
+    showValidationErrors();
+    // Then run payment field checks similar to the payment-continue/placeOrder handlers
+    // We only mark fields inline and focus the first invalid one — do NOT show a summary box.
     // Phone
     const tel = (document.getElementById('telefono') || {}).value || '';
     const telDigits = (tel||'').replace(/\D/g,'');
-    if(!telDigits || telDigits.length !== 10) messages.push('Teléfono (10 dígitos)');
+    if(!telDigits || telDigits.length !== 10) {
+      const el = document.getElementById('telefono'); if(el) markInvalid(el, 'Por favor ingresa teléfono válido (10 dígitos)');
+    }
 
     // Payment
     const method = (document.getElementById('metodoPago') || {}).value || '';
-    if(!method) {
-      messages.push('Método de pago');
+    if(!method){
+      const el = document.getElementById('metodoPago'); if(el) markInvalid(el, 'Por favor selecciona un método de pago');
     } else if(method === 'tarjeta'){
       const num = (document.getElementById('numeroTarjeta') || {}).value || '';
       const date = (document.getElementById('fechaVencimiento') || {}).value || '';
       const cvv = (document.getElementById('cvv') || {}).value || '';
-      if(!num) messages.push('Número de tarjeta');
-      if(!date || !/^\d{2}\/\d{2}$/.test(date)) messages.push('Fecha de vencimiento (MM/AA)');
-      if(!cvv || !/^\d{3,4}$/.test(cvv)) messages.push('CVV');
+      if(!num){ const el = document.getElementById('numeroTarjeta'); if(el) markInvalid(el,'Por favor ingresa número de tarjeta'); }
+      if(!date || !/^\d{2}\/\d{2}$/.test(date)){ const el = document.getElementById('fechaVencimiento'); if(el) markInvalid(el,'Formato MM/AA requerido'); }
+      if(!cvv || !/^\d{3,4}$/.test(cvv)){ const el = document.getElementById('cvv'); if(el) markInvalid(el,'CVV inválido'); }
     } else if(method === 'paypal'){
       const em = (document.getElementById('emailPaypal') || {}).value || '';
-      if(!em || !validateEmail(em)) messages.push('Email de PayPal');
+      if(!em || !validateEmail(em)){ const el = document.getElementById('emailPaypal'); if(el) markInvalid(el,'Email inválido'); }
     } else if(method === 'transferencia'){
       const banco = (document.getElementById('banco') || {}).value || '';
       const numC = (document.getElementById('numeroCuenta') || {}).value || '';
       const tit = (document.getElementById('titularCuenta') || {}).value || '';
-      if(!banco) messages.push('Banco');
-      if(!numC) messages.push('Número de cuenta');
-      if(!tit) messages.push('Titular de la cuenta');
+      if(!banco){ const el = document.getElementById('banco'); if(el) markInvalid(el,'Selecciona banco'); }
+      if(!numC){ const el = document.getElementById('numeroCuenta'); if(el) markInvalid(el,'Ingresa número de cuenta'); }
+      if(!tit){ const el = document.getElementById('titularCuenta'); if(el) markInvalid(el,'Ingresa titular de la cuenta'); }
     }
 
-    // Build a friendly HTML list
-    let html = '<p>Por favor completa los siguientes campos antes de confirmar el pago:</p><ul style="text-align:left; margin-left:1rem;">';
-    messages.forEach(m => { html += `<li>${m}</li>`; });
-    html += '</ul>';
-
-    Swal.fire({
-      icon: 'warning',
-      title: 'Campos incompletos',
-      html: html,
-      confirmButtonText: 'Ir a completar',
-      customClass: { popup: 'swal2-sm' }
-    }).then(()=>{
-      // Focus first missing field if any
-      const first = document.querySelector('.is-invalid') || document.querySelector('#ci_street, #ci_main_street, #telefono, #metodoPago, #numeroTarjeta, #emailPaypal, #numeroCuenta');
-      if(first) try{ first.focus(); }catch(_){}
-    });
+    // Focus the first invalid field and ensure it's scrolled into view.
+    const firstInvalid = document.querySelector('.is-invalid');
+    if (firstInvalid) {
+      try {
+        // If the invalid field is inside one of the accordion collapse panels,
+        // ensure that panel is opened so the field is visible before focusing.
+        const collapseEl = firstInvalid.closest('#collapseOne, #collapseTwo, #collapseThree');
+        if (collapseEl) {
+          try {
+            if (typeof bootstrap !== 'undefined' && bootstrap.Collapse) {
+              // Use Bootstrap Collapse API to show the target panel and hide others
+              ['collapseOne','collapseTwo','collapseThree'].forEach(id=>{
+                const el = document.getElementById(id);
+                if(!el) return;
+                const inst = bootstrap.Collapse.getOrCreateInstance(el);
+                if (el === collapseEl) inst.show(); else inst.hide();
+              });
+            } else {
+              // Fallback: toggle 'show' class directly
+              ['collapseOne','collapseTwo','collapseThree'].forEach(id=>{
+                const el = document.getElementById(id);
+                if(!el) return;
+                if (el === collapseEl) el.classList.add('show'); else el.classList.remove('show');
+              });
+            }
+          } catch(e) { /* ignore collapse errors */ }
+        }
+        // Small timeout to allow expand animation to complete before scrolling/focusing
+        setTimeout(()=>{ try { firstInvalid.scrollIntoView({ behavior: 'smooth', block: 'center' }); firstInvalid.focus(); } catch(e){} }, 120);
+      } catch(e){}
+    }
   }
 
-  // Intercept clicks on the wrapper so clicking the visually-disabled button shows a nice modal
+  // Intercept interactions on the wrapper so clicking the (disabled) button area
+  // always runs the inline validation (same behavior as the "Continuar" flow)
+  // We listen on pointerdown and click in the capture phase to catch events even
+  // when the inner button is disabled in some browsers.
   const placeWrap = document.getElementById('place-order-wrap');
-  if(placeWrap){
-    placeWrap.addEventListener('click', (ev)=>{
-      ev.preventDefault(); ev.stopPropagation();
-      if(!validateAllForFinalButton()){
+  if (placeWrap) {
+    // make wrapper visibly clickable
+    try { placeWrap.style.cursor = 'pointer'; } catch(e) {}
+
+    const placeWrapHandler = (ev) => {
+      // Prevent default navigation or form submissions
+      try { ev.preventDefault(); } catch(e) {}
+      // Ensure inline validation is shown if the final validation fails
+      if (!validateAllForFinalButton()) {
         showMissingFieldsNotification();
         return;
       }
-      // All good: call handler
-      handlePlaceOrder();
-    });
+      // All good — proceed with normal place order flow
+      handlePlaceOrder(ev);
+    };
+
+    // Attach for pointerdown and click to be robust across browsers and disabled-button behavior
+    placeWrap.addEventListener('pointerdown', placeWrapHandler, { capture: true });
+    placeWrap.addEventListener('click', placeWrapHandler, { capture: true });
   }
 
   // Also bind the real place-order button if present (fallback when wrapper is not used)

@@ -128,20 +128,15 @@
       try {
         const rightCol = document.getElementById('cart-right-col') || document.querySelector('.col-12.col-lg-7');
         const leftCol = document.getElementById('cart-left-col') || document.querySelector('.col-12.col-lg-8.mx-auto, .col-12.col-lg-6.mx-auto, .col-12.col-lg-5');
-        if (userLogged) {
+        // Always show the right-side summary/shipping column when there are products.
+        // Guests can view shipping options and totals but will be prompted to log in when proceeding to checkout.
+        try {
           if (rightCol) rightCol.style.display = '';
           if (leftCol) {
             leftCol.classList.remove('col-lg-8','col-lg-6','mx-auto');
             leftCol.classList.add('col-lg-5');
           }
-        } else {
-          // if not logged, hide shipping/options even if there are products
-          if (rightCol) rightCol.style.display = 'none';
-          if (leftCol) {
-            leftCol.classList.remove('col-lg-5');
-            leftCol.classList.add('col-lg-8','mx-auto');
-          }
-        }
+        } catch(e) { /* ignore layout errors */ }
       } catch(e){ }
     }
   }

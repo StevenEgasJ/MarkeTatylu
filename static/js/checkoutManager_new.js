@@ -815,6 +815,7 @@ function generateOrder(carrito, userData, locationData, totals, invoiceData) {
             imagen: item.imagen
         })),
         totales: totals,
+        loyalty: invoiceData.loyaltyRedemption || null,
         timestamp: Date.now()
     };
 }
@@ -884,6 +885,12 @@ async function showFinalInvoice(order) {
                         <div class="col-8">Envío:</div>
                         <div class="col-4 text-end">$${order.totales.envio.toFixed(2)}</div>
                     </div>
+                    ${order.totales.discount ? `
+                    <div class="row">
+                        <div class="col-8">Descuento (Puntos):</div>
+                        <div class="col-4 text-end">-$${order.totales.discount.toFixed(2)}</div>
+                    </div>
+                    ` : ''}
                     <div class="row border-top pt-2 bg-light rounded">
                         <div class="col-8"><strong>TOTAL PAGADO:</strong></div>
                         <div class="col-4 text-end"><strong style="color: #28a745; font-size: 1.2em;">$${order.totales.total.toFixed(2)}</strong></div>
@@ -910,12 +917,13 @@ async function showFinalInvoice(order) {
         if (result.isConfirmed) {
             // Descargar PDF
             downloadInvoicePDF(order);
-        } else if (result.dismiss === Swal.DismissReason.cancel) {
-            // Ver Mis Compras
-            window.location.href = 'compras.html';
-        } else if (result.isDenied) {
-            // Volver al Inicio
-            window.location.href = 'index.html';
+        } else {
+            // Stay on the checkout page — do not auto-navigate.
+            try {
+                if (typeof Swal !== 'undefined' && Swal.fire) {
+                    Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Orden guardada', showConfirmButton: false, timer: 1200 });
+                }
+            } catch (e) { /* ignore */ }
         }
     });
 }
@@ -1138,6 +1146,50 @@ class CheckoutManager {
             `;
         }
     }
+
+    async placeOrder() {
+        try {
+            // ...existing code... (validaciones)
+
+            // Crear el pedido
+            const order = {
+                id: this.generateOrderId(),
+                numeroOrden: this.generateOrderId(),
+                cliente: this.orderData.cliente,
+                productos: this.cart,
+                totales: this.calculateTotals(),
+                entrega: this.orderData.entrega,
+                pago: this.orderData.pago,
+                estado: 'procesando',
+                fecha: new Date().toISOString(),
+                timestamp: Date.now()
+            };
+
+            // Reducir el stock de los productos comprados
+            if (typeof productManager !== 'undefined' && productManager.reduceStock) {
+                console.log('📉 Reduciendo stock de productos...');
+                await productManager.reduceStock(this.cart);
+            }
+
+            // Guardar el pedido
+            await this.saveOrder(order);
+
+            // Limpiar carrito
+            localStorage.removeItem('carrito');
+
+            // Disparar evento de actualización de productos
+            window.dispatchEvent(new Event('productsUpdated'));
+
+            // ...existing code... (mostrar confirmación)
+
+            return { success: true, order: order };
+        } catch (error) {
+            console.error('❌ Error al realizar el pedido:', error);
+            throw error;
+        }
+    }
+
+    // ...existing code...
 }
 
 // Instanciar el checkout manager solo en la página de checkout o si el DOM indica que se requiere
@@ -1388,7 +1440,62 @@ window.enviarCarrito = async function() {
         }
 
         // ✅ PASO 6: Calcular totales
-        const totals = calculateTotalsWithTax(carrito);
+        let totals = calculateTotalsWithTax(carrito);
+
+        // ✅ PASO 6.1: Intentar canjear puntos automáticamente (si el usuario tiene suficientes)
+        try {
+            const userEmail = localStorage.getItem('userEmail');
+            if (userEmail && typeof loyaltyManager !== 'undefined') {
+                const summary = loyaltyManager.getLoyaltySummary(userEmail) || {};
+                const availableDiscount = Number(summary.availableDiscount || 0);
+
+                // Calcular cuántos "bloques" de descuento podemos aplicar.
+                // Cada bloque = loyaltyManager.config.pointsToDiscount puntos => loyaltyManager.config.discountValue $.
+                const blockValue = Number(loyaltyManager.config.discountValue || 0);
+                const blockPoints = Number(loyaltyManager.config.pointsToDiscount || 0);
+
+                if (availableDiscount >= blockValue && blockValue > 0) {
+                    // Máximo que podemos aplicar sin exceder el total
+                    const maxApplicable = Math.min(availableDiscount, totals.total || 0);
+                    const blocks = Math.floor(maxApplicable / blockValue);
+
+                    if (blocks > 0) {
+                        const pointsToRedeem = blocks * blockPoints;
+                        // Ejecutar canje (esto decrementa los puntos en localStorage)
+                        const redeemResult = loyaltyManager.redeemPoints(userEmail, pointsToRedeem);
+                        if (redeemResult && redeemResult.success) {
+                            const discountApplied = Number(redeemResult.discount || 0);
+                            // Registrar el descuento en los totales (no alteramos subtotal/iva/envío para simplificar)
+                            totals = Object.assign({}, totals, {
+                                discount: (totals.discount || 0) + discountApplied,
+                                total: Math.max(0, (totals.total || 0) - discountApplied)
+                            });
+
+                            // Mostrar notificación breve al usuario
+                            try {
+                                Swal.fire({
+                                    title: '¡Canje automático aplicado!',
+                                    html: `Se han canjeado <strong>${pointsToRedeem} puntos</strong> por <strong>$${discountApplied.toFixed(2)}</strong> de descuento.`,
+                                    icon: 'success',
+                                    toast: true,
+                                    position: 'top-end',
+                                    timer: 3500,
+                                    showConfirmButton: false
+                                });
+                            } catch (e) { console.log('Notificación de canje no mostrada', e); }
+
+                            // Guardar metadata para incluirla en la orden
+                            invoiceData.loyaltyRedemption = {
+                                pointsRedeemed: pointsToRedeem,
+                                discountApplied: discountApplied
+                            };
+                        }
+                    }
+                }
+            }
+        } catch (e) {
+            console.warn('Error intentando canjear puntos automáticamente:', e);
+        }
 
         // ✅ PASO 7: Mostrar confirmación final
         const confirmed = await showInvoicePreview(carrito, userData, locationData, totals, invoiceData);
@@ -1724,7 +1831,7 @@ function updateAdminProductStock(productId, quantity) {
         }
     } catch (error) {
         console.error('❌ Error actualizando stock del admin:', error);
-        return { success: false, message: 'Error actualizando stock admin' };
+               return { success: false, message: 'Error actualizando stock admin' };
     }
 }
 
@@ -1794,242 +1901,54 @@ function updateProductStock(carrito) {
     }
 }
 
-// =================== FUNCIONES PARA CAMBIAR CANTIDAD CON TECLADO ===================
+// Integración con Programa de Lealtad al finalizar compra
+// (agregar después de la función placeOrder o al final del archivo)
 
-// Inicializar listeners para cambiar cantidad con teclado
-function initializeQuantityKeyboardControls() {
-    document.addEventListener('keydown', function(event) {
-        // Solo activar si hay productos en el carrito visible
-        const cartItems = document.querySelectorAll('.cart-item');
-        if (cartItems.length === 0) return;
+// Wrapper para otorgar puntos después de completar pedido
+if (typeof window.checkoutManager !== 'undefined' && window.checkoutManager) {
+    const originalPlaceOrder = window.checkoutManager.placeOrder;
+    
+    window.checkoutManager.placeOrder = async function() {
+        const result = await originalPlaceOrder.call(this);
         
-        const activeElement = document.activeElement;
-        
-        // Si el foco está en un input de cantidad
-        if (activeElement && activeElement.classList.contains('quantity-input')) {
-            const productId = activeElement.getAttribute('data-product-id');
-            
-            if (event.key === 'ArrowUp' || event.key === '+') {
-                event.preventDefault();
-                increaseQuantity(productId);
-            } else if (event.key === 'ArrowDown' || event.key === '-') {
-                event.preventDefault();
-                decreaseQuantity(productId);
-            }
-        }
-        
-        // Atajos globales para el carrito
-        if (event.ctrlKey || event.metaKey) {
-            switch(event.key) {
-                case '+':
-                case '=':
-                    event.preventDefault();
-                    // Aumentar cantidad del primer producto del carrito
-                    if (cartItems.length > 0) {
-                        const firstProductId = cartItems[0].getAttribute('data-product-id');
-                        if (firstProductId) increaseQuantity(firstProductId);
-                    }
-                    break;
-                case '-':
-                    event.preventDefault();
-                    // Disminuir cantidad del primer producto del carrito
-                    if (cartItems.length > 0) {
-                        const firstProductId = cartItems[0].getAttribute('data-product-id');
-                        if (firstProductId) decreaseQuantity(firstProductId);
-                    }
-                    break;
-            }
-        }
-    });
-}
-
-// Función para aumentar cantidad
-function increaseQuantity(productId) {
-    try {
-        const carrito = JSON.parse(localStorage.getItem("carrito")) || [];
-        const productoIndex = carrito.findIndex(item => item.id === productId);
-        
-        if (productoIndex !== -1) {
-            carrito[productoIndex].cantidad += 1;
-            localStorage.setItem("carrito", JSON.stringify(carrito));
-            
-            // Actualizar UI
-            if (typeof actualizarCarritoUI === 'function') {
-                actualizarCarritoUI();
-            }
-            
-            // Mostrar feedback visual
-            showQuantityChangeToast(carrito[productoIndex].nombre, carrito[productoIndex].cantidad, 'increase');
-        }
-    } catch (error) {
-        console.error('Error aumentando cantidad:', error);
-    }
-}
-
-// Función para disminuir cantidad
-function decreaseQuantity(productId) {
-    try {
-        const carrito = JSON.parse(localStorage.getItem("carrito")) || [];
-        const productoIndex = carrito.findIndex(item => item.id === productId);
-        
-        if (productoIndex !== -1) {
-            if (carrito[productoIndex].cantidad > 1) {
-                carrito[productoIndex].cantidad -= 1;
-                localStorage.setItem("carrito", JSON.stringify(carrito));
+        // Si el pedido fue exitoso, otorgar puntos de lealtad
+        if (result && result.success && result.order) {
+            try {
+                const userEmail = localStorage.getItem('userEmail');
+                const totalAmount = result.order.totales?.total || 0;
+                const orderId = result.order.id || result.order.numeroOrden;
                 
-                // Actualizar UI
-                if (typeof actualizarCarritoUI === 'function') {
-                    actualizarCarritoUI();
+                if (userEmail && totalAmount > 0 && typeof loyaltyManager !== 'undefined') {
+                    const loyaltyResult = loyaltyManager.addPointsForPurchase(userEmail, totalAmount, orderId);
+                    
+                    if (loyaltyResult.success && loyaltyResult.points > 0) {
+                        console.log('✅ Puntos de lealtad otorgados:', loyaltyResult);
+                        
+                        // Mostrar notificación de puntos ganados
+                        setTimeout(() => {
+                            Swal.fire({
+                                title: '🎉 ¡Puntos Ganados!',
+                                html: `
+                                    <p>Has ganado <strong>${loyaltyResult.points} puntos</strong></p>
+                                    <p>Multiplicador ${loyaltyResult.tierName}: <span class="badge bg-success">x${loyaltyResult.multiplier}</span></p>
+                                    <hr>
+                                    <p>Total de puntos: <strong>${loyaltyResult.totalPoints}</strong></p>
+                                    <a href="loyalty.html" class="btn btn-primary btn-sm mt-2">Ver mi programa de lealtad</a>
+                                `,
+                                icon: 'success',
+                                timer: 5000,
+                                toast: true,
+                                position: 'top-end',
+                                showConfirmButton: false
+                            });
+                        }, 2000);
+                    }
                 }
-                
-                // Mostrar feedback visual
-                showQuantityChangeToast(carrito[productoIndex].nombre, carrito[productoIndex].cantidad, 'decrease');
-            } else {
-                // Si la cantidad es 1, preguntar si quiere eliminar el producto
-                Swal.fire({
-                    title: '¿Eliminar producto?',
-                    text: `¿Quieres eliminar "${carrito[productoIndex].nombre}" del carrito?`,
-                    icon: 'question',
-                    showCancelButton: true,
-                    confirmButtonText: 'Sí, eliminar',
-                    cancelButtonText: 'Cancelar',
-                    confirmButtonColor: '#dc3545'
-                }).then((result) => {
-                    if (result.isConfirmed) {
-                        removeFromCart(productId);
-                    }
-                });
-            }
-        }
-    } catch (error) {
-        console.error('Error disminuyendo cantidad:', error);
-    }
-}
-
-// Mostrar toast de cambio de cantidad
-function showQuantityChangeToast(productName, newQuantity, action) {
-    const icon = action === 'increase' ? '➕' : '➖';
-    const actionText = action === 'increase' ? 'Aumentado' : 'Disminuido';
-    
-    Swal.fire({
-        toast: true,
-        position: 'top-end',
-        showConfirmButton: false,
-        timer: 1500,
-        timerProgressBar: true,
-        icon: 'success',
-        title: `${icon} ${actionText}`,
-        text: `${productName}: ${newQuantity} unidades`
-    });
-}
-
-// Función para eliminar del carrito
-function removeFromCart(productId) {
-    try {
-        let carrito = JSON.parse(localStorage.getItem("carrito")) || [];
-        const productoIndex = carrito.findIndex(item => item.id === productId);
-        
-        if (productoIndex !== -1) {
-            const productName = carrito[productoIndex].nombre;
-            carrito.splice(productoIndex, 1);
-            localStorage.setItem("carrito", JSON.stringify(carrito));
-            
-            // Actualizar UI
-            if (typeof actualizarCarritoUI === 'function') {
-                actualizarCarritoUI();
-            }
-            
-            // Mostrar confirmación
-            Swal.fire({
-                toast: true,
-                position: 'top-end',
-                showConfirmButton: false,
-                timer: 2000,
-                icon: 'success',
-                title: 'Producto eliminado',
-                text: `${productName} eliminado del carrito`
-            });
-        }
-    } catch (error) {
-        console.error('Error eliminando del carrito:', error);
-    }
-}
-
-// =================== INICIALIZACIÓN ===================
-
-// Inicializar controles cuando se carga la página
-document.addEventListener('DOMContentLoaded', function() {
-    // Inicializar controles de teclado para cantidad
-    initializeQuantityKeyboardControls();
-    
-    // NOTE: previously showed keyboard instructions; removed per UX decision
-});
-
-// Mostrar instrucciones de uso del teclado
-// showKeyboardInstructions removed per user request (no tutorial on cart page)
-
-// =================== FUNCIONES DE VALIDACIÓN ===================
-
-// Función para validar tarjetas de crédito usando algoritmo de Luhn
-function validateCreditCard(cardNumber) {
-    // Remover espacios y guiones
-    cardNumber = cardNumber.replace(/[\s-]/g, '');
-    
-    // Verificar que solo contenga números
-    if (!/^\d+$/.test(cardNumber)) {
-        return false;
-    }
-    
-    // Verificar longitud (13-19 dígitos)
-    if (cardNumber.length < 13 || cardNumber.length > 19) {
-        return false;
-    }
-    
-    // Algoritmo de Luhn
-    let sum = 0;
-    let isEven = false;
-    
-    // Procesar de derecha a izquierda
-    for (let i = cardNumber.length - 1; i >= 0; i--) {
-        let digit = parseInt(cardNumber.charAt(i));
-        
-        if (isEven) {
-            digit *= 2;
-            if (digit > 9) {
-                digit -= 9;
+            } catch (err) {
+                console.warn('No se pudieron otorgar puntos de lealtad:', err);
             }
         }
         
-        sum += digit;
-        isEven = !isEven;
-    }
-    
-    return (sum % 10) === 0;
-}
-
-// Función para validar email
-function validateEmail(email) {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
-}
-
-// Función para actualizar stock de productos (simulado en localStorage)
-function updateProductStock(carrito) {
-    try {
-        // Obtener inventario actual
-        const inventario = JSON.parse(localStorage.getItem('productInventory') || '{}');
-        
-        carrito.forEach(item => {
-            if (inventario[item.id]) {
-                inventario[item.id] = Math.max(0, inventario[item.id] - item.cantidad);
-            }
-        });
-        
-        // Guardar inventario actualizado
-        localStorage.setItem('productInventory', JSON.stringify(inventario));
-        console.log('📦 Stock actualizado:', inventario);
-        
-    } catch (error) {
-        console.error('Error actualizando stock:', error);
-    }
+        return result;
+    };
 }

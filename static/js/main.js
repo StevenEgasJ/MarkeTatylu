@@ -188,6 +188,109 @@ document.addEventListener("DOMContentLoaded", async function() {
 
 // --- Funciones de gestión de productos mejoradas ---
 
+// --- Reviews cache and rendering helpers ---
+// Render stars for a given rating (0-5). Uses FontAwesome if available, otherwise Unicode stars.
+function renderStarsInline(rating) {
+    const n = Math.round(Number(rating) || 0);
+    // If FontAwesome is available, prefer icons
+    if (typeof document !== 'undefined' && document && document.createElement) {
+        const faAvailable = !!document.querySelector || true; // always true in browser; keep check simple
+        let out = '';
+        for (let i = 0; i < 5; i++) {
+            if (i < n) out += '<i class="fa-solid fa-star" style="color: #f6c84c;"></i>';
+            else out += '<i class="fa-regular fa-star" style="color: #dcdcdc;"></i>';
+        }
+        return out;
+    }
+    // Fallback to unicode
+    let out = '';
+    for (let i = 0; i < 5; i++) out += (i < n) ? '★' : '☆';
+    return `<span class="text-warning">${out}</span>`;
+}
+
+// Initialize a background cache of reviews (admin/all endpoint). When ready, compute averages and re-render product grid.
+let __reviewsCacheInit = false;
+async function initReviewsCache() {
+    if (__reviewsCacheInit) return; // already started
+    __reviewsCacheInit = true;
+
+    try {
+        // Attempt to fetch all reviews via admin endpoint (returns all reviews). This endpoint is present in the repo.
+        const res = await fetch('/api/reviews/admin/all');
+        if (!res.ok) throw new Error('Reviews fetch failed: ' + res.status);
+        const all = await res.json();
+        // Build map: { productId: { avg: Number, count: Number } }
+        const map = {};
+        (all || []).forEach(r => {
+            if (!r || !r.productId) return;
+            // Only consider approved reviews for public rating
+            if (r.approved !== true) return;
+            const id = String(r.productId);
+            map[id] = map[id] || { sum: 0, count: 0 };
+            map[id].sum += Number(r.rating) || 0;
+            map[id].count += 1;
+        });
+
+        const reviewsMap = {};
+        Object.keys(map).forEach(pid => {
+            const entry = map[pid];
+            reviewsMap[pid] = { avg: entry.count ? (entry.sum / entry.count) : 0, count: entry.count };
+        });
+
+        window._reviewsMap = reviewsMap;
+
+        // Re-render product grid if present so ratings appear
+        if (document.getElementById('products-container')) {
+            try {
+                loadProductsFromManager();
+            } catch (e) { console.warn('Could not re-render products after reviews cache', e); }
+        }
+    } catch (err) {
+        console.warn('initReviewsCache error:', err);
+    }
+}
+
+// Helper to get rating display for a product id using cached reviews map
+function getRatingForProduct(productId) {
+    try {
+        if (window._reviewsMap && window._reviewsMap[productId]) {
+            const { avg, count } = window._reviewsMap[productId];
+            return { avg: avg, count: count };
+        }
+    } catch (e) { /* ignore */ }
+    return null;
+}
+
+function renderProductRatingHtml(product) {
+    try {
+        // Prefer explicit product.rating if provided by server
+        if (product && (product.rating !== undefined && product.rating !== null)) {
+            const n = Number(product.rating) || 0;
+            const count = product.reviewCount || '';
+            return `<span class="stars">${renderStarsInline(n)}</span><small class="text-muted ms-1">${count ? '('+count+')' : ''}</small>`;
+        }
+
+        const cached = getRatingForProduct(String(product.id));
+        if (cached) {
+            const avg = cached.avg || 0;
+            const count = cached.count || 0;
+            return `<span class="stars">${renderStarsInline(avg)}</span><small class="text-muted ms-1">${count ? '('+count+')' : ''}</small>`;
+        }
+
+        // default: no rating yet
+        return `<span class="text-muted">Sin reseñas</span>`;
+    } catch (e) {
+        console.warn('renderProductRatingHtml error', e);
+        return '';
+    }
+}
+
+// Alias para compatibilidad con product.html
+async function loadProducts() {
+    console.log('📦 loadProducts() llamado - redirigiendo a loadProductsFromManager()');
+    return loadProductsFromManager();
+}
+
 // Cargar productos dinámicamente
 function loadProductsFromManager() {
     console.log('📦 Cargando productos desde productManager...');
@@ -229,6 +332,9 @@ function loadProductsFromManager() {
                     const productCard = createProductCard(product);
                     productContainer.appendChild(productCard);
                 });
+
+                // Kick off async reviews caching in background (will re-render when ready)
+                try { initReviewsCache(); } catch (e) { console.warn('initReviewsCache failed to start', e); }
                 
                 console.log('✅ Productos renderizados en el contenedor');
             }
@@ -274,6 +380,9 @@ function createProductCard(product) {
             <img src="${product.imagen}" class="card-img-top product-image" alt="${product.nombre}">
             <div class="card-body d-flex flex-column">
                 <h5 class="card-title">${product.nombre}</h5>
+                <div class="product-rating" data-product-id="${product.id}">
+                    ${renderProductRatingHtml(product)}
+                </div>
                 <p class="card-text">${shortDesc}</p>
                 <p class="text-muted"><small>${product.capacidad || 'N/A'}</small></p>
                 <div class="mt-auto">
@@ -530,12 +639,15 @@ function showPurchaseHistory() {
 
 // --- FUNCIONES DEL CARRITO - LA PARTE MÁS IMPORTANTE ---
 
-function agregarAlCarrito(id, nombre, precio, imagen, mililitros) {
+async function agregarAlCarrito(id, nombre, precio, imagen, mililitros) {
     console.log('🛒 agregarAlCarrito called with:', { id, nombre, precio, tipo: typeof id });
     // NOTE: Allow adding to cart even when not logged in. Login will be enforced at checkout.
 
     // Verificar stock disponible usando productManager
-    if (typeof productManager !== 'undefined') {
+    if (typeof productManager !== 'undefined' && typeof productManager.checkStockAvailability === 'function') {
+        // Asegurar que los productos estén sincronizados
+        await productManager.syncWithAdminProducts();
+        
         let carrito = JSON.parse(localStorage.getItem("carrito")) || [];
         let productoExistente = carrito.find(p => p.id.toString() === id.toString());
         let cantidadActualEnCarrito = productoExistente ? productoExistente.cantidad : 0;
@@ -543,13 +655,13 @@ function agregarAlCarrito(id, nombre, precio, imagen, mililitros) {
 
         console.log('🔍 Checking stock for product:', { id, cantidadSolicitada, cantidadActualEnCarrito });
 
-        const stockCheck = productManager.checkStock(id, cantidadSolicitada);
+        const stockCheck = productManager.checkStockAvailability(id, cantidadSolicitada);
         console.log('📦 Stock check result:', stockCheck);
         
         if (!stockCheck.available) {
             Swal.fire({
                 title: 'Stock insuficiente',
-                text: stockCheck.message,
+                text: stockCheck.reason || 'No hay suficiente stock disponible',
                 icon: 'warning',
                 confirmButtonText: 'Entendido'
             });
@@ -587,13 +699,28 @@ function agregarAlCarrito(id, nombre, precio, imagen, mililitros) {
         setTimeout(() => cartIcon.classList.remove("cart-animate"), 300);
     }
 
-    Swal.fire({
-        title: "Producto agregado",
-        text: `"${nombre}" ha sido añadido al carrito.`,
-        icon: "success",
-        showConfirmButton: false,
-        timer: 2000
-    });
+    // Mostrar notificación con opción de ir al carrito
+    try {
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({
+                title: 'Producto agregado',
+                text: `"${nombre}" ha sido añadido al carrito.`,
+                icon: 'success',
+                showCancelButton: true,
+                confirmButtonText: 'Ir al carrito',
+                cancelButtonText: 'Seguir comprando'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    window.location.href = 'cart.html';
+                }
+            });
+        } else {
+            // Fallback simple
+            alert(`${nombre} ha sido añadido al carrito.`);
+        }
+    } catch (err) {
+        console.warn('Error mostrando notificación de producto agregado', err);
+    }
 
     // Refrescar productos para mostrar stock actualizado
     setTimeout(() => {
@@ -628,35 +755,35 @@ function updateCartCount() {
 }
 
 function cargarCarrito() {
-    // Verificar si el usuario está logueado para mostrar el carrito
-    if (localStorage.getItem('userLoggedIn') !== 'true') {
-        let cartItemsContainer = document.getElementById("cart-items");
-        if (cartItemsContainer) {
-            cartItemsContainer.innerHTML = `
-                <div class="empty-cart text-center">
-                    <i class="fa-solid fa-user-lock fa-3x mb-3 text-muted"></i>
-                    <p>Necesitas iniciar sesión para ver tu carrito.</p>
-                    <a href="login.html" class="btn btn-1 me-2">Iniciar Sesión</a>
-                    <a href="signUp.html" class="btn btn-2">Crear Cuenta</a>
-                </div>
-            `;
-            const totalPriceEl = document.getElementById("total-price");
-            if (totalPriceEl) totalPriceEl.innerText = "$0.00";
-            return;
-        }
-    }
-
+    // Mostrar un banner si el usuario no está logueado, pero seguir renderizando el carrito
+    const guestMode = localStorage.getItem('userLoggedIn') !== 'true';
     let carrito = JSON.parse(localStorage.getItem("carrito")) || [];
     let cartItemsContainer = document.getElementById("cart-items");
     let totalPrice = 0;
     if (!cartItemsContainer) return;
 
-    cartItemsContainer.innerHTML = "";
+    // Preparar banner para usuarios no logueados
+    const guestBannerHtml = guestMode ? `
+        <div class="alert alert-warning d-flex align-items-center" role="alert">
+            <i class="fa-solid fa-user-lock fa-lg me-3"></i>
+            <div>
+                <strong>Estás comprando como invitado.</strong><br>
+                Para finalizar la compra necesitarás iniciar sesión. Puedes continuar viendo tu carrito y seleccionar opciones de envío.
+            </div>
+        </div>
+    ` : '';
+
+    cartItemsContainer.innerHTML = guestBannerHtml;
 
     if (carrito.length === 0) {
-    cartItemsContainer.innerHTML = `<p class="empty-cart">Tu carrito está vacío.</p>`;
-    const totalPriceEl2 = document.getElementById("total-price");
-    if (totalPriceEl2) totalPriceEl2.innerText = "$0.00";
+        cartItemsContainer.innerHTML += `<p class="empty-cart">Tu carrito está vacío.</p>`;
+        // actualizar resumen rápido a cero
+        const quickSubtotal = document.getElementById('quick-subtotal');
+        const quickShipping = document.getElementById('quick-shipping');
+        const quickTotal = document.getElementById('quick-total');
+        if (quickSubtotal) quickSubtotal.innerText = `$0.00`;
+        if (quickShipping) quickShipping.innerText = `$0.00`;
+        if (quickTotal) quickTotal.innerText = `$0.00`;
         return;
     }
 
@@ -683,9 +810,36 @@ function cargarCarrito() {
         `;
     });
 
-    const totalPriceEl3 = document.getElementById("total-price");
-    if (totalPriceEl3) totalPriceEl3.innerText = `$${totalPrice.toFixed(2)}`;
+    // actualizar resumen rápido
+    updateQuickSummary(totalPrice);
 }
+
+// Actualiza el resumen rápido (subtotal, envío y total)
+function updateQuickSummary(subtotal) {
+    try {
+        const quickSubtotal = document.getElementById('quick-subtotal');
+        const quickShipping = document.getElementById('quick-shipping');
+        const quickTotal = document.getElementById('quick-total');
+
+        const selectedShippingEl = document.querySelector('input[name="shipping"]:checked');
+        const shippingCost = selectedShippingEl ? parseFloat(selectedShippingEl.value) : 0;
+
+        if (quickSubtotal) quickSubtotal.innerText = `$${(subtotal || 0).toFixed(2)}`;
+        if (quickShipping) quickShipping.innerText = `$${(shippingCost || 0).toFixed(2)}`;
+        if (quickTotal) quickTotal.innerText = `$${((subtotal || 0) + (shippingCost || 0)).toFixed(2)}`;
+    } catch (err) {
+        console.warn('updateQuickSummary error', err);
+    }
+}
+
+// Escuchar cambios en la selección de envío para recalcular el resumen
+document.addEventListener('change', function(e) {
+    if (e.target && e.target.name === 'shipping') {
+        const carrito = JSON.parse(localStorage.getItem("carrito")) || [];
+        const subtotal = carrito.reduce((s, p) => s + (Number(p.precio) || 0) * (Number(p.cantidad) || 0), 0);
+        updateQuickSummary(subtotal);
+    }
+});
 
 function actualizarCantidad(index, cambio) {
     let carrito = JSON.parse(localStorage.getItem("carrito")) || [];
@@ -1246,8 +1400,96 @@ function removeFromCart(productId) {
     }
 }
 
+// Función para verificar si estamos en un servidor o en file://
+function isRunningOnServer() {
+    const protocol = window.location.protocol;
+    return protocol === 'http:' || protocol === 'https:';
+}
 
-// Exponer funciones globalmente
-window.increaseQuantity = increaseQuantity;
-window.decreaseQuantity = decreaseQuantity;
-window.removeFromCart = removeFromCart;
+// Mostrar advertencia si estamos en file://
+function checkServerStatus() {
+    if (!isRunningOnServer()) {
+        console.warn('⚠️ ADVERTENCIA: La aplicación se está ejecutando desde file://');
+        console.warn('📌 Para una experiencia completa, ejecuta la aplicación en un servidor HTTP');
+        console.warn('💡 Sugerencia: Usa "python -m http.server 8000" o Live Server de VS Code');
+        
+        // Mostrar banner de advertencia (opcional)
+        const banner = document.createElement('div');
+        banner.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: #ff9800;
+            color: white;
+            padding: 10px;
+            text-align: center;
+            z-index: 9999;
+            font-size: 14px;
+        `;
+        banner.innerHTML = `
+            ⚠️ Modo offline detectado. Para mejor experiencia, ejecuta en un servidor local.
+            <button onclick="this.parentElement.remove()" style="margin-left: 10px; background: white; border: none; padding: 5px 10px; cursor: pointer; border-radius: 3px;">Cerrar</button>
+        `;
+        document.body.prepend(banner);
+    }
+}
+
+// Ejecutar verificación al cargar
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', checkServerStatus);
+} else {
+    checkServerStatus();
+}
+
+// DEBUG: Función helper para verificar stock en consola
+window.debugStock = function(productId) {
+    console.log('=== DEBUG STOCK ===');
+    console.log('Product ID:', productId);
+    
+    if (typeof productManager === 'undefined') {
+        console.error('❌ productManager no está disponible');
+        return;
+    }
+    
+    console.log('Total productos en memoria:', productManager.products.length);
+    
+    const product = productManager.getProductById(productId);
+    if (!product) {
+        console.error('❌ Producto no encontrado');
+        console.log('IDs disponibles:', productManager.products.map(p => p.id));
+        return;
+    }
+    
+    console.log('✅ Producto encontrado:', {
+        id: product.id,
+        nombre: product.nombre,
+        stock: product.stock,
+        stockType: typeof product.stock,
+        precio: product.precio
+    });
+    
+    const carrito = JSON.parse(localStorage.getItem("carrito")) || [];
+    const enCarrito = carrito.find(p => p.id.toString() === productId.toString());
+    console.log('En carrito:', enCarrito ? enCarrito.cantidad : 0);
+    
+    return product;
+};
+
+// DEBUG: Listar todos los productos con stock
+window.listAllStock = function() {
+    console.log('=== TODOS LOS PRODUCTOS ===');
+    if (typeof productManager === 'undefined') {
+        console.error('❌ productManager no está disponible');
+        return;
+    }
+    
+    const products = productManager.products;
+    console.table(products.map(p => ({
+        id: p.id,
+        nombre: p.nombre,
+        stock: p.stock,
+        precio: p.precio,
+        categoria: p.categoria
+    })));
+};

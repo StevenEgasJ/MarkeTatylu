@@ -238,5 +238,141 @@
   <script src="./static/js/productDetailModal.js"></script>
   <script src="./static/js/main.js"></script>
 
+  <script>
+    // Cargar productos al iniciar la página
+    document.addEventListener('DOMContentLoaded', async function() {
+        console.log('🚀 Página de productos cargada');
+        
+        // Actualizar interfaz de usuario
+        try {
+            if (typeof updateUserInterface === 'function') {
+                updateUserInterface();
+            }
+        } catch (e) {
+            console.warn('Error actualizando interfaz de usuario:', e);
+        }
+
+        // Cargar productos
+        try {
+            if (typeof loadProducts === 'function') {
+                await loadProducts();
+            } else {
+                console.error('❌ Función loadProducts no encontrada');
+            }
+        } catch (error) {
+            console.error('❌ Error cargando productos:', error);
+            Swal.fire({
+                title: 'Error',
+                text: 'No se pudieron cargar los productos. Por favor, recarga la página.',
+                icon: 'error'
+            });
+        }
+
+        // Configurar actualización periódica del stock cada 30 segundos
+        setInterval(async function() {
+            if (typeof productManager !== 'undefined' && productManager.syncWithAdminProducts) {
+                console.log('🔄 Sincronización periódica de productos...');
+                await productManager.syncWithAdminProducts();
+            }
+        }, 30000); // 30 segundos
+    });
+
+    // Función para agregar al carrito con verificación de stock
+    async function addToCart(productId) {
+        try {
+            console.log('🛒 Intentando agregar producto al carrito:', productId);
+            
+            // Obtener producto actualizado
+            const product = productManager ? productManager.getProductById(productId) : null;
+            
+            if (!product) {
+                console.error('❌ Producto no encontrado:', productId);
+                Swal.fire('Error', 'Producto no encontrado', 'error');
+                return;
+            }
+
+            console.log('📦 Producto encontrado:', {
+                id: product.id,
+                nombre: product.nombre,
+                stock: product.stock,
+                tipo: typeof product.stock
+            });
+
+            // Verificar stock disponible
+            const currentStock = Number(product.stock) || 0;
+            
+            console.log(`📊 Stock actual procesado: ${currentStock}`);
+            
+            if (currentStock === 0) {
+                console.warn('⚠️ Producto sin stock');
+                Swal.fire({
+                    title: 'Sin Stock',
+                    text: 'Este producto está agotado',
+                    icon: 'warning'
+                });
+                return;
+            }
+
+            // Verificar cantidad en carrito
+            const carrito = JSON.parse(localStorage.getItem('carrito') || '[]');
+            const itemInCart = carrito.find(item => String(item.id) === String(productId));
+            const cantidadEnCarrito = itemInCart ? Number(itemInCart.cantidad) : 0;
+
+            console.log(`🛒 Cantidad en carrito: ${cantidadEnCarrito}`);
+
+            if (cantidadEnCarrito >= currentStock) {
+                console.warn('⚠️ Stock insuficiente');
+                Swal.fire({
+                    title: 'Stock Limitado',
+                    text: `Solo hay ${currentStock} unidades disponibles y ya tienes ${cantidadEnCarrito} en tu carrito`,
+                    icon: 'warning'
+                });
+                return;
+            }
+
+            // Agregar al carrito
+            if (itemInCart) {
+                itemInCart.cantidad = cantidadEnCarrito + 1;
+                console.log(`➕ Incrementando cantidad en carrito: ${itemInCart.cantidad}`);
+            } else {
+                carrito.push({
+                    id: product.id,
+                    nombre: product.nombre,
+                    precio: product.precio,
+                    imagen: product.imagen,
+                    cantidad: 1,
+                    stock: currentStock
+                });
+                console.log('➕ Nuevo producto agregado al carrito');
+            }
+
+            localStorage.setItem('carrito', JSON.stringify(carrito));
+
+            // Actualizar contador del carrito
+            if (typeof updateCartCount === 'function') {
+                updateCartCount();
+            }
+
+            // Mostrar notificación
+            Swal.fire({
+                title: '¡Agregado!',
+                text: `${product.nombre} agregado al carrito`,
+                icon: 'success',
+                timer: 1500,
+                showConfirmButton: false,
+                toast: true,
+                position: 'top-end'
+            });
+
+            console.log('✅ Producto agregado exitosamente al carrito');
+
+        } catch (error) {
+            console.error('❌ Error agregando al carrito:', error);
+            Swal.fire('Error', 'No se pudo agregar el producto al carrito', 'error');
+        }
+    }
+    window.addToCart = addToCart;
+  </script>
+
 </body>
 </html>

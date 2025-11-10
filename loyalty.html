@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tatylu - Programa de Lealtad</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="./static/css/styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Pacifico&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+    <style>
+        .loyalty-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        .tier-badge {
+            display: inline-block;
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-weight: bold;
+            text-transform: uppercase;
+            font-size: 0.9rem;
+        }
+        .tier-bronze { background: #cd7f32; color: white; }
+        .tier-silver { background: #c0c0c0; color: #333; }
+        .tier-gold { background: #ffd700; color: #333; }
+        .tier-platinum { background: #e5e4e2; color: #333; }
+        .points-display {
+            font-size: 3rem;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        .progress-custom {
+            height: 25px;
+            border-radius: 12px;
+            background: rgba(255,255,255,0.2);
+        }
+        .progress-bar-custom {
+            background: linear-gradient(90deg, #4facfe 0%, #00f2fe 100%);
+            border-radius: 12px;
+        }
+        .reward-item {
+            transition: transform 0.2s;
+        }
+        .reward-item:hover {
+            transform: translateY(-5px);
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header -->
+    <header class="bg-custom">
+      <div class="container">
+        <div class="row align-items-center py-3">
+          <div class="col-4 d-flex align-items-center">
+            <img src="./static/img/logo.png" alt="logo" class="img-fluid logo" style="max-height: 50px;">
+            <h1 class="ms-3 mb-0 text-custom site-title">Tatylu</h1>
+          </div>
+          <div class="col-8 d-flex justify-content-end align-items-center">
+            <div class="d-flex align-items-center gap-3">
+              <div class="dropdown">
+                <button class="btn btn-link p-0 border-0" type="button" id="userDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                  <i class="fa-solid fa-user fa-2x text-white user-icon"></i>
+                </button>
+                <div class="dropdown-menu dropdown-menu-end shadow-lg border-0 rounded-3 p-3" aria-labelledby="userDropdown" style="min-width: 280px; margin-top: 8px;">
+                    <div class="dropdown-header d-flex align-items-center mb-3">
+                        <i class="fa-solid fa-user-circle fa-2x text-primary me-2"></i>
+                        <h6 class="mb-0 fw-bold">Bienvenido a Tatylu</h6>
+                    </div>
+                  <div class="user-info bg-light rounded-2 p-2 mb-3">
+                    <div class="mb-2">
+                      <small class="text-muted"><i class="fa-solid fa-envelope me-1"></i>Correo:</small>
+                      <div class="fw-semibold" id="userEmail">--</div>
+                    </div>
+                    <div class="mb-2">
+                      <small class="text-muted"><i class="fa-solid fa-user me-1"></i>Nombre:</small>
+                      <div class="fw-semibold" id="userNombre">--</div>
+                    </div>
+                    <div class="mb-0">
+                      <small class="text-muted"><i class="fa-solid fa-id-card me-1"></i>Apellido:</small>
+                      <div class="fw-semibold" id="userApellido">--</div>
+                    </div>
+                  </div>
+                  <div class="dropdown-divider"></div>
+                  <a class="dropdown-item rounded-2 py-2" href="profile.html">
+                    <i class="fa-solid fa-user-pen text-primary me-2"></i>Editar cuenta
+                  </a>
+                  <a class="dropdown-item rounded-2 py-2" href="compras.html">
+                    <i class="fa-solid fa-shopping-bag text-success me-2"></i>Mis Compras
+                  </a>
+                  <a class="dropdown-item rounded-2 py-2" href="loyalty.html">
+                    <i class="fa-solid fa-star text-warning me-2"></i>Programa de Lealtad
+                  </a>
+                  <a class="dropdown-item rounded-2 py-2" href="#" onclick="logout()">
+                    <i class="fa-solid fa-right-from-bracket text-danger me-2"></i>Cerrar Sesión
+                  </a>
+                </div>
+              </div>
+              
+              <a href="cart.html" class="position-relative cart-link">
+                <i class="fa-solid fa-cart-shopping fa-2x text-white cart-icon" id="cart-icon"></i>
+                <span id="cart-count" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger cart-badge"></span>
+              </a>
+              
+              <div class="theme-toggle-wrapper">
+                <div class="toggle-container" id="dark-mode-toggle">
+                  <div class="toggle-ball"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <div class="container">
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse justify-content-center" id="navbarNav">
+                <ul class="navbar-nav">
+                    <li class="nav-item"><a class="nav-link" href="index.html">Inicio</a></li>
+                    <li class="nav-item"><a class="nav-link" href="aboutUs.html">Quienes Somos</a></li>
+                    <li class="nav-item"><a class="nav-link" href="product.html">Productos</a></li>
+                    <li class="nav-item"><a class="nav-link" href="contact.html">Contacto</a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="container my-5">
+        <div class="row">
+            <div class="col-12">
+                <h1 class="text-center mb-4 site-title">
+                    <i class="fa-solid fa-star text-warning me-2"></i>
+                    Programa de Lealtad Tatylu
+                </h1>
+                
+                <!-- Tarjeta de Lealtad -->
+                <div class="loyalty-card mb-4">
+                    <div class="row align-items-center">
+                        <div class="col-md-8">
+                            <div class="d-flex align-items-center mb-3">
+                                <i class="fa-solid fa-award fa-3x me-3"></i>
+                                <div>
+                                    <h3 class="mb-0" id="userName">Usuario</h3>
+                                    <span class="tier-badge" id="tierBadge">Bronce</span>
+                                </div>
+                            </div>
+                            <div class="points-display mb-2" id="pointsDisplay">0</div>
+                            <p class="mb-0 opacity-75">Puntos disponibles</p>
+                        </div>
+                        <div class="col-md-4 text-end">
+                            <div class="mb-2">
+                                <i class="fa-solid fa-shopping-cart me-2"></i>
+                                <span id="purchaseCount">0</span> compras
+                            </div>
+                            <div>
+                                <i class="fa-solid fa-dollar-sign me-2"></i>
+                                $<span id="totalSpent">0.00</span> gastados
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Progreso al siguiente nivel -->
+                <div class="card mb-4" id="progressCard" style="display: none;">
+                    <div class="card-body">
+                        <h5 class="card-title">
+                            <i class="fa-solid fa-chart-line me-2"></i>
+                            Progreso al siguiente nivel
+                        </h5>
+                        <div class="d-flex justify-content-between mb-2">
+                            <span>Nivel actual: <strong id="currentTierName">Bronce</strong></span>
+                            <span>Siguiente: <strong id="nextTierName">Plata</strong></span>
+                        </div>
+                        <div class="progress progress-custom">
+                            <div class="progress-bar progress-bar-custom" role="progressbar" id="tierProgress" style="width: 0%"></div>
+                        </div>
+                        <p class="text-muted small mt-2 mb-0">
+                            <i class="fa-solid fa-info-circle me-1"></i>
+                            Necesitas <strong id="pointsNeeded">0</strong> puntos más para <span id="nextTierNameText">Plata</span>
+                        </p>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <!-- Beneficios del nivel -->
+                    <div class="col-md-6 mb-4">
+                        <div class="card h-100">
+                            <div class="card-header bg-primary text-white">
+                                <h5 class="mb-0">
+                                    <i class="fa-solid fa-gift me-2"></i>
+                                    Beneficios de tu nivel
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <strong>Multiplicador de puntos:</strong>
+                                    <span class="badge bg-success ms-2" id="multiplierBadge">x1</span>
+                                </div>
+                                <ul class="list-unstyled" id="perksList">
+                                    <li><i class="fa-solid fa-check text-success me-2"></i>Acumula puntos en cada compra</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Canje de puntos -->
+                    <div class="col-md-6 mb-4">
+                        <div class="card h-100">
+                            <div class="card-header bg-success text-white">
+                                <h5 class="mb-0">
+                                    <i class="fa-solid fa-ticket me-2"></i>
+                                    Canjear Puntos
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <p class="text-muted">Puedes canjear tus puntos por descuentos en tu próxima compra:</p>
+                                
+                                <div class="alert alert-info">
+                                    <i class="fa-solid fa-info-circle me-2"></i>
+                                    <strong>100 puntos = $10 de descuento</strong>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label">Puntos a canjear:</label>
+                                    <input type="number" class="form-control" id="redeemPoints" min="100" step="100" placeholder="Mínimo 100 puntos">
+                                    <small class="text-muted">Descuento estimado: $<span id="estimatedDiscount">0.00</span></small>
+                                </div>
+
+                                <button class="btn btn-success w-100" onclick="redeemPoints()">
+                                    <i class="fa-solid fa-exchange-alt me-2"></i>
+                                    Canjear Puntos
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Cómo ganar más puntos -->
+                <div class="card mb-4">
+                    <div class="card-header bg-warning">
+                        <h5 class="mb-0">
+                            <i class="fa-solid fa-lightbulb me-2"></i>
+                            ¿Cómo ganar más puntos?
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <div class="reward-item card h-100 text-center">
+                                    <div class="card-body">
+                                        <i class="fa-solid fa-shopping-bag fa-3x text-primary mb-3"></i>
+                                        <h6>Compra en la tienda</h6>
+                                        <p class="text-muted small">Gana 1 punto por cada $10 gastados</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <div class="reward-item card h-100 text-center">
+                                    <div class="card-body">
+                                        <i class="fa-solid fa-birthday-cake fa-3x text-success mb-3"></i>
+                                        <h6>Cumpleaños</h6>
+                                        <p class="text-muted small">100 puntos de regalo en tu cumpleaños</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <div class="reward-item card h-100 text-center">
+                                    <div class="card-body">
+                                        <i class="fa-solid fa-user-plus fa-3x text-info mb-3"></i>
+                                        <h6>Referir amigos</h6>
+                                        <p class="text-muted small">200 puntos por cada amigo referido</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Historial de puntos -->
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fa-solid fa-history me-2"></i>
+                            Historial de Puntos
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Fecha</th>
+                                        <th>Tipo</th>
+                                        <th>Descripción</th>
+                                        <th class="text-end">Puntos</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="historyTable">
+                                    <tr>
+                                        <td colspan="4" class="text-center text-muted">No hay historial disponible</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="text-white py-4">
+        <div class="container">
+            <div class="row text-center mb-3">
+                <div class="col-12">
+                    <h3>Sobre Nosotros</h3>
+                    <p class="mb-2">Somos una empresa dedicada a ofrecer electrodomésticos de alta calidad a precios accesibles para todo el público.</p>
+                </div>
+            </div>
+            <div class="row justify-content-center">
+                <div class="col-md-5 text-center mb-2 mb-md-0 me-md-5">
+                    <h4 class="h5 mb-2">Información de Contacto</h4>
+                    <p class="mb-1"><i class="fa-solid fa-envelope me-2"></i>ventas@tatylu.com</p>
+                    <p class="mb-1"><i class="fa-solid fa-location-dot me-2"></i>Avenida Maldonado S29-106, Quito</p>
+                    <p class="mb-1"><i class="fa-solid fa-phone me-2"></i>+593967967369</p>
+                </div>
+                <div class="col-md-4 text-center ms-md-5">
+                    <h4 class="h5 mb-2">Síguenos</h4>
+                    <div class="social-icons">
+                        <a href="https://www.facebook.com/tatylu" class="me-3"><i class="fa-brands fa-facebook"></i></a>
+                        <a href="https://www.instagram.com/tatylu/" class="me-3"><i class="fa-brands fa-instagram"></i></a>
+                        <a href="https://www.tiktok.com/@tatylu?lang=es" class="me-3"><i class="fa-brands fa-tiktok"></i></a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="./static/js/productManager.js"></script>
+    <script src="./static/js/checkoutManager_new.js"></script>
+    <script src="./static/js/theme-toggle.js"></script>
+    <script src="./static/js/main.js"></script>
+    <script src="./static/js/loyaltyManager.js"></script>
+    
+    <script>
+        // Verificar autenticación
+        if (localStorage.getItem('userLoggedIn') !== 'true') {
+            window.location.href = 'login.html';
+        }
+
+        // Cargar datos de lealtad
+        function loadLoyaltyData() {
+            const userEmail = localStorage.getItem('userEmail');
+            if (!userEmail) return;
+
+            const summary = loyaltyManager.getLoyaltySummary(userEmail);
+            
+            // Actualizar UI
+            document.getElementById('userName').textContent = localStorage.getItem('userNombre') || 'Usuario';
+            document.getElementById('pointsDisplay').textContent = summary.points;
+            document.getElementById('purchaseCount').textContent = summary.purchaseCount;
+            document.getElementById('totalSpent').textContent = summary.totalSpent.toFixed(2);
+            
+            // Tier badge
+            const tierBadge = document.getElementById('tierBadge');
+            tierBadge.textContent = summary.tierName;
+            tierBadge.className = `tier-badge tier-${summary.tier}`;
+            
+            // Multiplicador
+            document.getElementById('multiplierBadge').textContent = `x${summary.multiplier}`;
+            
+            // Beneficios
+            const perksList = document.getElementById('perksList');
+            perksList.innerHTML = '<li><i class="fa-solid fa-check text-success me-2"></i>Acumula puntos en cada compra</li>';
+            summary.perks.forEach(perk => {
+                perksList.innerHTML += `<li><i class="fa-solid fa-check text-success me-2"></i>${perk}</li>`;
+            });
+            
+            // Progreso al siguiente nivel
+            if (summary.nextTier) {
+                document.getElementById('progressCard').style.display = 'block';
+                document.getElementById('currentTierName').textContent = summary.tierName;
+                document.getElementById('nextTierName').textContent = summary.nextTier.name;
+                document.getElementById('nextTierNameText').textContent = summary.nextTier.name;
+                document.getElementById('pointsNeeded').textContent = summary.nextTier.pointsNeeded;
+                
+                const progress = Math.min(100, (summary.totalPoints / (summary.totalPoints + summary.nextTier.pointsNeeded)) * 100);
+                document.getElementById('tierProgress').style.width = `${progress}%`;
+            } else {
+                document.getElementById('progressCard').style.display = 'none';
+            }
+            
+            // Historial
+            const historyTable = document.getElementById('historyTable');
+            if (summary.history.length > 0) {
+                historyTable.innerHTML = summary.history.map(h => {
+                    const pointsClass = h.points >= 0 ? 'text-success' : 'text-danger';
+                    const pointsSign = h.points >= 0 ? '+' : '';
+                    return `
+                        <tr>
+                            <td>${new Date(h.date).toLocaleDateString('es-ES')}</td>
+                            <td><span class="badge bg-secondary">${h.type}</span></td>
+                            <td>${h.description}</td>
+                            <td class="text-end ${pointsClass}"><strong>${pointsSign}${h.points}</strong></td>
+                        </tr>
+                    `;
+                }).join('');
+            }
+        }
+
+        // Calcular descuento estimado
+        document.getElementById('redeemPoints')?.addEventListener('input', function() {
+            const points = parseInt(this.value) || 0;
+            const discount = (points / 100) * 10;
+            document.getElementById('estimatedDiscount').textContent = discount.toFixed(2);
+        });
+
+        // Canjear puntos
+        function redeemPoints() {
+            const pointsInput = document.getElementById('redeemPoints');
+            const pointsToRedeem = parseInt(pointsInput.value) || 0;
+            
+            if (pointsToRedeem < 100) {
+                Swal.fire('Error', 'Debes canjear mínimo 100 puntos', 'error');
+                return;
+            }
+            
+            const userEmail = localStorage.getItem('userEmail');
+            const result = loyaltyManager.redeemPoints(userEmail, pointsToRedeem);
+            
+            if (result.success) {
+                Swal.fire({
+                    title: '¡Puntos Canjeados!',
+                    html: `
+                        <p>Has canjeado <strong>${result.pointsRedeemed} puntos</strong></p>
+                        <p>Descuento obtenido: <strong>$${result.discount.toFixed(2)}</strong></p>
+                        <p>Puntos restantes: <strong>${result.remainingPoints}</strong></p>
+                        <hr>
+                        <p class="text-muted small">Tu descuento se aplicará automáticamente en tu próxima compra</p>
+                    `,
+                    icon: 'success'
+                }).then(() => {
+                    pointsInput.value = '';
+                    document.getElementById('estimatedDiscount').textContent = '0.00';
+                    loadLoyaltyData();
+                });
+            } else {
+                Swal.fire('Error', result.message, 'error');
+            }
+        }
+
+        // Cargar datos al inicio
+        document.addEventListener('DOMContentLoaded', function() {
+            try { if (typeof updateUserInterface === 'function') updateUserInterface(); } catch (e) {}
+            loadLoyaltyData();
+        });
+    </script>
+</body>
+</html>

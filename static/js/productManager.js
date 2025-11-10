@@ -1,420 +1,261 @@
-// Sistema de gestión de productos con localStorage
+/**
+ * Product Manager - Gestión de productos
+ */
+
 class ProductManager {
     constructor() {
-        // Start with empty list and prefer loading from server (Atlas).
-        // If server fetch fails, fallback to localStorage or defaults.
         this.products = [];
+        this.loadProductsSync(); // Cargar inmediatamente desde localStorage de forma síncrona
+        this.loadProducts(); // Luego intentar actualizar desde servidor de forma asíncrona
+    }
 
+    // Cargar productos de forma síncrona desde localStorage (para inicialización inmediata)
+    loadProductsSync() {
         try {
-            if (window.api && typeof window.api.getProducts === 'function') {
-                // Attempt to fetch from API. If it fails, fallback handled in catch below.
-                this.fetchProductsFromApi().catch(err => {
-                    console.warn('No se pudo cargar productos desde API, usando copia local o seed:', err && err.message ? err.message : err);
-                    const existing = this.loadProducts();
-                    if (!existing || existing.length === 0) {
-                        this.initializeDefaultProducts();
-                    } else {
-                        this.products = existing;
-                    }
+            const stored = localStorage.getItem('productos');
+            if (stored) {
+                const parsed = JSON.parse(stored);
+                this.products = parsed.map(p => {
+                    const stockValue = p.stock !== undefined && p.stock !== null ? Number(p.stock) : 0;
+                    const precioValue = p.precio !== undefined && p.precio !== null ? Number(p.precio) : 0;
+                    // Normalizar id: preferir `id`, sino usar `_id` (MongoDB)
+                    const idValue = (p.id !== undefined && p.id !== null) ? String(p.id) : (p._id ? String(p._id) : undefined);
+                    return {
+                        ...p,
+                        id: idValue,
+                        stock: stockValue,
+                        precio: precioValue
+                    };
                 });
-                return;
+                console.log(`⚡ ${this.products.length} productos cargados de forma síncrona desde localStorage`);
             }
-        } catch (err) {
-            console.warn('API products fetch skipped due to error:', err);
-        }
-
-        // If no API available, use local products or seed defaults
-        const existing = this.loadProducts();
-        if (!existing || existing.length === 0) {
-            this.initializeDefaultProducts();
-        } else {
-            this.products = existing;
-        }
-    }
-
-    // Cargar productos desde localStorage
-    loadProducts() {
-        const products = localStorage.getItem('productos');
-        return products ? JSON.parse(products) : [];
-    }
-
-    // Intentar obtener productos desde la API del servidor (Atlas)
-    async fetchProductsFromApi() {
-        try {
-            const serverProducts = await window.api.getProducts();
-            if (Array.isArray(serverProducts) && serverProducts.length > 0) {
-                // Map server products to local shape
-                this.products = serverProducts.map(p => ({
-                    id: p._id || p.id,
-                    nombre: p.nombre || p.name || p.title || 'Producto',
-                    precio: p.precio || p.price || 0,
-                    capacidad: p.capacidad || p.descripcion?.substring(0,50) || p.descripcion || 'N/A',
-                    imagen: p.imagen || p.image || './static/img/producto.png',
-                    descripcion: p.descripcion || p.description || p.nombre || '',
-                    descuento: p.descuento || p.discount || 0,
-                    categoria: p.categoria || p.category || 'electrodomesticos',
-                    stock: p.stock || 0,
-                    fechaCreacion: p.fechaCreacion || p.createdAt || new Date().toISOString(),
-                    fechaModificacion: p.fechaModificacion || p.updatedAt || new Date().toISOString(),
-                    isAdminProduct: true
-                }));
-
-                this.saveProducts();
-                console.log('✅ Productos cargados desde API:', this.products.length);
-            }
-        } catch (err) {
-            console.warn('No se pudo cargar productos desde API:', err.message || err);
-        }
-    }
-
-    // Guardar productos en localStorage
-    saveProducts() {
-        localStorage.setItem('productos', JSON.stringify(this.products));
-    }
-
-    // Inicializar productos - crear productos por defecto si no existen
-    initializeDefaultProducts() {
-        const existingProducts = localStorage.getItem('productos');
-        
-        if (!existingProducts || JSON.parse(existingProducts).length === 0) {
-            // Crear productos por defecto
-            const defaultProducts = [
-                {
-                    id: 1,
-                    nombre: "Refrigeradora Samsung RF28T5001SR",
-                    precio: 1299.99,
-                    categoria: "refrigeracion",
-                    stock: 15,
-                    imagen: "./static/img/refrigeradora.png",
-                    descripcion: "Refrigeradora de 28 pies cúbicos con tecnología Twin Cooling Plus",
-                    fechaCreacion: new Date().toISOString()
-                },
-                {
-                    id: 2,
-                    nombre: "Microondas LG MS2596OB",
-                    precio: 189.99,
-                    categoria: "cocina",
-                    stock: 25,
-                    imagen: "./static/img/microondas.png",
-                    descripcion: "Microondas de 25 litros con grill y función auto-cook",
-                    fechaCreacion: new Date().toISOString()
-                },
-                {
-                    id: 3,
-                    nombre: "Licuadora Oster BLSTPB-WBL",
-                    precio: 89.99,
-                    categoria: "pequenos",
-                    stock: 30,
-                    imagen: "./static/img/licuadora.png",
-                    descripcion: "Licuadora de 6 velocidades con jarra de vidrio",
-                    fechaCreacion: new Date().toISOString()
-                },
-                {
-                    id: 4,
-                    nombre: "Cafetera Hamilton Beach 49980A",
-                    precio: 79.99,
-                    categoria: "pequenos",
-                    stock: 20,
-                    imagen: "./static/img/cafetera.png",
-                    descripcion: "Cafetera programable de 12 tazas con jarra térmica",
-                    fechaCreacion: new Date().toISOString()
-                },
-                {
-                    id: 5,
-                    nombre: "Hervidor Eléctrico Cuisinart CPK-17",
-                    precio: 99.99,
-                    categoria: "pequenos",
-                    stock: 18,
-                    imagen: "./static/img/hervidor.png",
-                    descripcion: "Hervidor eléctrico de acero inoxidable con control de temperatura",
-                    fechaCreacion: new Date().toISOString()
-                },
-                {
-                    id: 6,
-                    nombre: "Plancha de Vapor Black+Decker IR03V",
-                    precio: 45.99,
-                    categoria: "pequenos",
-                    stock: 22,
-                    imagen: "./static/img/plancha.png",
-                    descripcion: "Plancha de vapor con suela antiadherente y tanque de agua de 200ml",
-                    fechaCreacion: new Date().toISOString()
-                },
-                {
-                    id: 7,
-                    nombre: "Tostadora Cuisinart CPT-180",
-                    precio: 69.99,
-                    categoria: "pequenos",
-                    stock: 16,
-                    imagen: "./static/img/tostadora.png",
-                    descripcion: "Tostadora de 4 rebanadas con 7 niveles de tostado",
-                    fechaCreacion: new Date().toISOString()
-                },
-                {
-                    id: 8,
-                    nombre: "Ventilador de Torre Dyson AM07",
-                    precio: 399.99,
-                    categoria: "climatizacion",
-                    stock: 8,
-                    imagen: "./static/img/ventilador.png",
-                    descripcion: "Ventilador de torre sin aspas con amplificador de aire Dyson",
-                    fechaCreacion: new Date().toISOString()
-                },
-                {
-                    id: 9,
-                    nombre: "Freidora de Aire Ninja AF101",
-                    precio: 129.99,
-                    categoria: "cocina",
-                    stock: 12,
-                    imagen: "./static/img/freidora.png",
-                    descripcion: "Freidora de aire de 4 cuartos con tecnología de circulación rápida",
-                    fechaCreacion: new Date().toISOString()
-                },
-                {
-                    id: 10,
-                    nombre: "Extractor de Jugos Breville BJE200XL",
-                    precio: 199.99,
-                    categoria: "pequenos",
-                    stock: 10,
-                    imagen: "./static/img/extractor.png",
-                    descripcion: "Extractor de jugos centrífugo con motor de 700W",
-                    fechaCreacion: new Date().toISOString()
-                }
-            ];
-            
-            localStorage.setItem('productos', JSON.stringify(defaultProducts));
-            console.log('✅ Productos por defecto creados automáticamente:', defaultProducts.length);
-        }
-        
-        // Sincronizar con productos del admin
-        this.syncWithAdminProducts();
-    }
-
-    // Sincronizar con productos del admin
-    syncWithAdminProducts() {
-        const adminProducts = localStorage.getItem('productos');
-        if (!adminProducts) return;
-        try {
-            const adminProdArray = JSON.parse(adminProducts);
-            // Convert admin format and merge into existing products without overwriting server-sourced items
-            adminProdArray.forEach(adminProd => {
-                const converted = {
-                    id: adminProd.id,
-                    nombre: adminProd.nombre,
-                    precio: adminProd.precio,
-                    capacidad: adminProd.descripcion ? adminProd.descripcion.substring(0, 50) + '...' : 'N/A',
-                    imagen: adminProd.imagen || './static/img/producto.png',
-                    descripcion: adminProd.descripcion || adminProd.nombre,
-                    categoria: adminProd.categoria || 'electrodomesticos',
-                    stock: adminProd.stock || 10,
-                    fechaCreacion: adminProd.fechaCreacion || new Date().toISOString(),
-                    fechaModificacion: adminProd.fechaModificacion || new Date().toISOString(),
-                    isAdminProduct: true
-                };
-
-                // Try to match by id first, otherwise try to match by name (case-insensitive) to avoid duplicating server products
-                let idx = this.products.findIndex(p => p.id && p.id.toString() === converted.id.toString());
-                if (idx === -1) {
-                    const nameNormalized = (converted.nombre || '').toString().trim().toLowerCase();
-                    idx = this.products.findIndex(p => (p.nombre || '').toString().trim().toLowerCase() === nameNormalized);
-                }
-
-                if (idx !== -1) {
-                    // Merge admin fields but keep server fields intact where present
-                    this.products[idx] = { ...this.products[idx], ...converted };
-                } else {
-                    // Add admin-only product
-                    this.products.push(converted);
-                }
-            });
-
-            this.saveProducts();
-            console.log('✅ Productos del admin integrados (merge) con la lista actual:', this.products.length);
         } catch (error) {
-            console.error('Error sincronizando productos admin:', error);
+            console.error('❌ Error en loadProductsSync:', error);
         }
     }
 
-    // Obtener todos los productos
-    getAllProducts() {
-        this.syncWithAdminProducts();
+    // Cargar productos desde el servidor o localStorage
+    async loadProducts() {
+        try {
+            // MODIFICACIÓN: Solo intentar fetch si NO estamos en file://
+            const isFileProtocol = window.location.protocol === 'file:';
+            
+            if (!isFileProtocol && typeof window.api !== 'undefined' && window.api.getProducts) {
+                console.log('📡 Cargando productos desde el servidor...');
+                const serverProducts = await window.api.getProducts();
+                if (serverProducts && serverProducts.length > 0) {
+                    console.log(`✅ ${serverProducts.length} productos cargados desde el servidor`);
+                    this.products = serverProducts.map(p => {
+                        const stockValue = p.stock !== undefined && p.stock !== null ? Number(p.stock) : 0;
+                        const precioValue = p.precio !== undefined && p.precio !== null ? Number(p.precio) : 0;
+                        // Normalizar id: preferir `id`, si no existe usar `_id` (respuesta de MongoDB)
+                        const idValue = (p.id !== undefined && p.id !== null) ? String(p.id) : (p._id ? String(p._id) : undefined);
+                        return {
+                            ...p,
+                            id: idValue,
+                            stock: stockValue,
+                            precio: precioValue
+                        };
+                    });
+                    // Actualizar localStorage con los datos del servidor
+                    localStorage.setItem('productos', JSON.stringify(this.products));
+                    return this.products;
+                }
+            } else if (isFileProtocol) {
+                console.log('ℹ️ Modo offline (file://), cargando desde localStorage');
+            }
+        } catch (error) {
+            console.warn('⚠️ No se pudieron cargar productos desde el servidor:', error);
+        }
+
+        // Fallback a localStorage
+        try {
+            const stored = localStorage.getItem('productos');
+            if (stored) {
+                const parsed = JSON.parse(stored);
+                this.products = parsed.map(p => {
+                    const stockValue = p.stock !== undefined && p.stock !== null ? Number(p.stock) : 0;
+                    const precioValue = p.precio !== undefined && p.precio !== null ? Number(p.precio) : 0;
+                    return {
+                        ...p,
+                        stock: stockValue,
+                        precio: precioValue
+                    };
+                });
+                console.log(`📦 ${this.products.length} productos cargados desde localStorage`);
+                // Log de algunos productos para debug
+                if (this.products.length > 0) {
+                    console.log('📋 Primeros 3 productos con stock:', 
+                        this.products.slice(0, 3).map(p => ({
+                            id: p.id,
+                            nombre: p.nombre,
+                            stock: p.stock,
+                            stockType: typeof p.stock
+                        }))
+                    );
+                }
+            } else {
+                console.warn('⚠️ No hay productos en localStorage');
+                this.products = [];
+            }
+        } catch (error) {
+            console.error('❌ Error cargando productos desde localStorage:', error);
+            this.products = [];
+        }
+
         return this.products;
+    }
+
+    // Obtener todos los productos (alias para compatibilidad)
+    getAllProducts() {
+        return this.getProducts();
+    }
+
+    // Obtener todos los productos con stock actualizado
+    getProducts() {
+        // Asegurarse de que el stock es numérico
+        return this.products.map(product => ({
+            ...product,
+            stock: Number(product.stock) || 0,
+            precio: Number(product.precio) || 0
+        }));
     }
 
     // Obtener producto por ID
     getProductById(id) {
-        // Convertir ambos a string para comparación consistente
-        return this.products.find(product => product.id.toString() === id.toString());
-    }
-
-    // Crear nuevo producto
-    async createProduct(productData) {
-        const newProduct = {
-            id: 'prod' + Date.now(),
-            ...productData,
-            fechaCreacion: new Date().toISOString(),
-            fechaModificacion: new Date().toISOString()
-        };
-        
-        this.products.push(newProduct);
-        this.saveProducts();
-        
-        // Notificación
-        if ('Notification' in window && Notification.permission === 'granted') {
-            new Notification('El Valle', {
-                body: `Producto "${newProduct.nombre}" creado exitosamente`,
-                icon: './static/img/logo.png'
-            });
-        }
-        
-        return newProduct;
-    }
-
-    // Actualizar producto
-    async updateProduct(id, productData) {
-        const index = this.products.findIndex(product => product.id.toString() === id.toString());
-        if (index !== -1) {
-            this.products[index] = {
-                ...this.products[index],
-                ...productData,
-                fechaModificacion: new Date().toISOString()
-            };
-            this.saveProducts();
-            
-            // Notificación
-            if ('Notification' in window && Notification.permission === 'granted') {
-                new Notification('El Valle', {
-                    body: `Producto "${this.products[index].nombre}" actualizado`,
-                    icon: './static/img/logo.png'
-                });
-            }
-            
-            return this.products[index];
-        }
-        return null;
-    }
-
-    // Eliminar producto
-    async deleteProduct(id) {
-        const index = this.products.findIndex(product => product.id.toString() === id.toString());
-        if (index !== -1) {
-            const deletedProduct = this.products[index];
-            this.products.splice(index, 1);
-            this.saveProducts();
-            
-            // Notificación
-            if ('Notification' in window && Notification.permission === 'granted') {
-                new Notification('El Valle', {
-                    body: `Producto "${deletedProduct.nombre}" eliminado`,
-                    icon: './static/img/logo.png'
-                });
-            }
-            
-            return deletedProduct;
-        }
-        return null;
-    }
-
-    // Buscar productos
-    searchProducts(query) {
-        const searchTerm = query.toLowerCase();
-        return this.products.filter(product => 
-            product.nombre.toLowerCase().includes(searchTerm) ||
-            product.descripcion.toLowerCase().includes(searchTerm) ||
-            product.categoria.toLowerCase().includes(searchTerm)
-        );
-    }
-
-    // Filtrar productos por categoría
-    getProductsByCategory(category) {
-        return this.products.filter(product => product.categoria === category);
-    }
-
-    // Actualizar stock
-    updateStock(id, newStock) {
-        const product = this.getProductById(id);
+        const product = this.products.find(p => String(p.id) === String(id));
         if (product) {
-            product.stock = newStock;
-            product.fechaModificacion = new Date().toISOString();
-            this.saveProducts();
-            return product;
+            const stockValue = product.stock !== undefined && product.stock !== null ? Number(product.stock) : 0;
+            const precioValue = product.precio !== undefined && product.precio !== null ? Number(product.precio) : 0;
+            
+            console.log(`🔍 getProductById(${id}): stock raw = ${product.stock}, converted = ${stockValue}`);
+            
+            return {
+                ...product,
+                stock: stockValue,
+                precio: precioValue
+            };
         }
         return null;
-   }
+    }
 
-    // Verificar stock disponible de un producto
-    checkStock(productId, requestedQuantity = 1) {
+    // Actualizar stock de un producto
+    async updateStock(productId, newStock) {
+        try {
+            console.log(`🔄 Actualizando stock del producto ${productId} a ${newStock}`);
+            
+            // Actualizar en memoria
+            const index = this.products.findIndex(p => String(p.id) === String(productId));
+            if (index !== -1) {
+                this.products[index].stock = Number(newStock);
+                
+                // Guardar en localStorage
+                localStorage.setItem('productos', JSON.stringify(this.products));
+                
+                // Intentar actualizar en el servidor
+                if (typeof window.api !== 'undefined' && window.api.updateProduct) {
+                    try {
+                        await window.api.updateProduct(productId, { stock: Number(newStock) });
+                        console.log('✅ Stock actualizado en el servidor');
+                    } catch (error) {
+                        console.warn('⚠️ No se pudo actualizar en el servidor:', error);
+                    }
+                }
+                
+                // Disparar evento de actualización
+                window.dispatchEvent(new CustomEvent('stockUpdated', { 
+                    detail: { productId, newStock } 
+                }));
+                
+                return true;
+            }
+            return false;
+        } catch (error) {
+            console.error('❌ Error actualizando stock:', error);
+            return false;
+        }
+    }
+
+    // Reducir stock después de una compra
+    async reduceStock(cartItems) {
+        try {
+            console.log('📉 Reduciendo stock de productos comprados...');
+            
+            for (const item of cartItems) {
+                const product = this.getProductById(item.id);
+                if (product) {
+                    const newStock = Math.max(0, Number(product.stock) - Number(item.cantidad));
+                    await this.updateStock(item.id, newStock);
+                    console.log(`✅ Stock reducido: ${product.nombre} - Stock anterior: ${product.stock}, Vendido: ${item.cantidad}, Nuevo stock: ${newStock}`);
+                }
+            }
+            
+            return true;
+        } catch (error) {
+            console.error('❌ Error reduciendo stock:', error);
+            return false;
+        }
+    }
+
+    // Sincronizar con datos del admin
+    async syncWithAdminProducts() {
+        try {
+            console.log('🔄 Sincronizando productos con admin...');
+            
+            // Recargar productos desde el servidor
+            await this.loadProducts();
+            
+            // Disparar evento de actualización
+            window.dispatchEvent(new Event('productsUpdated'));
+            
+            console.log('✅ Productos sincronizados correctamente');
+            return true;
+        } catch (error) {
+            console.error('❌ Error sincronizando productos:', error);
+            return false;
+        }
+    }
+
+    // Verificar stock disponible para un producto
+    checkStockAvailability(productId, requestedQuantity) {
+        console.log(`🔍 checkStockAvailability called with ID: ${productId}, Requested: ${requestedQuantity}`);
+        console.log(`📦 Total products in memory: ${this.products.length}`);
+        
         const product = this.getProductById(productId);
+        
         if (!product) {
-            return { available: false, message: 'Producto no encontrado' };
+            console.warn(`❌ Producto no encontrado con ID: ${productId}`);
+            console.log('📋 IDs disponibles:', this.products.map(p => p.id));
+            return { available: false, reason: 'Producto no encontrado' };
         }
-        
-        const currentStock = product.stock || 0;
-        if (currentStock <= 0) {
-            return { available: false, message: 'Producto sin stock' };
+
+        const currentStock = Number(product.stock) || 0;
+        const requested = Number(requestedQuantity) || 0;
+
+        console.log(`✅ Producto encontrado: ${product.nombre}`);
+        console.log(`📦 Stock actual: ${currentStock}, Solicitado: ${requested}`);
+
+        if (currentStock === 0) {
+            console.warn(`❌ Producto agotado: ${product.nombre}`);
+            return { available: false, reason: 'Producto agotado', currentStock: 0 };
         }
-        
-        if (currentStock < requestedQuantity) {
+
+        if (requested > currentStock) {
+            console.warn(`❌ Stock insuficiente para ${product.nombre}: tiene ${currentStock}, solicita ${requested}`);
             return { 
                 available: false, 
-                message: `Solo quedan ${currentStock} unidades disponibles` 
+                reason: `Stock insuficiente. Solo hay ${currentStock} unidades disponibles`,
+                currentStock: currentStock 
             };
         }
-        
-        return { available: true, stock: currentStock };
-    }
 
-    // Obtener productos con stock bajo (5 o menos)
-    getLowStockProducts() {
-        return this.products.filter(product => (product.stock || 0) <= 5);
-    }
-
-    // Reducir stock de un producto
-    reduceStock(id, quantity) {
-        const product = this.getProductById(id);
-        if (product) {
-            const newStock = Math.max(0, product.stock - quantity);
-            product.stock = newStock;
-            product.fechaModificacion = new Date().toISOString();
-            
-            // Actualizar también en los productos del admin
-            this.updateAdminProductStock(id, quantity);
-            
-            this.saveProducts();
-            return { 
-                success: true, 
-                newStock: newStock,
-                message: `Stock actualizado: ${newStock} unidades disponibles`
-            };
-        }
-        return { 
-            success: false, 
-            message: 'Producto no encontrado' 
-        };
-    }
-
-    // Actualizar stock en productos del admin
-    updateAdminProductStock(productId, quantity) {
-        try {
-            const adminProducts = JSON.parse(localStorage.getItem('productos') || '[]');
-            const productIndex = adminProducts.findIndex(p => p.id.toString() === productId.toString());
-            
-            if (productIndex !== -1) {
-                const currentStock = adminProducts[productIndex].stock || 0;
-                const newStock = Math.max(0, currentStock - quantity);
-                adminProducts[productIndex].stock = newStock;
-                adminProducts[productIndex].fechaModificacion = new Date().toISOString();
-                
-                localStorage.setItem('productos', JSON.stringify(adminProducts));
-                console.log(`📦 Admin stock actualizado desde productManager para producto ${productId}: ${newStock} unidades`);
-                
-                return { success: true, newStock: newStock };
-            }
-        } catch (error) {
-            console.error('❌ Error actualizando stock del admin desde productManager:', error);
-        }
-        return { success: false };
+        console.log(`✅ Stock disponible para ${product.nombre}`);
+        return { available: true, currentStock: currentStock };
     }
 }
+
+// Exportar instancia global
+window.productManager = new ProductManager();
 
 // Clase para manejo de cámara y archivos
 class MediaHandler {
