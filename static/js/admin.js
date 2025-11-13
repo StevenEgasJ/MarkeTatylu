@@ -42,7 +42,16 @@ class AdminPanelManager {
         this._fetchUsersAttempts = 0;
         // Kick off background sync from server (non-blocking)
         try {
-            this.loadServerData();
+            // Only start loading server data immediately if admin is already logged in.
+            // If not logged in yet, wait for the auth token to be set (dispatched as 'auth:token-set')
+            // to avoid making unauthenticated requests that can fail and show an error to the user.
+            if (this.isAdminLoggedIn()) {
+                this.loadServerData();
+            } else {
+                window.addEventListener('auth:token-set', () => {
+                    try { this.loadServerData(); } catch (e) { console.warn('Error starting server data load after token set:', e); }
+                }, { once: true });
+            }
         } catch (err) {
             console.warn('Error starting server data load:', err);
         }
@@ -98,27 +107,36 @@ class AdminPanelManager {
                 this._pedidos = adminOrders;
                 console.log('Admin: pedidos cargados desde server (in-memory):', adminOrders.length);
 
-                // For orders missing cliente info but containing userId, try to populate cliente by fetching the user
-                (async () => {
+                // For orders missing cliente info but containing userId, try to populate cliente using the
+                // users cache. We wait for fetchUsers() to finish so we avoid firing many per-order
+                // requests (which could return 404 during initial load) and causing noisy errors.
+                try {
+                    await this.fetchUsers().catch(() => []);
+                    const usersById = {};
+                    (this._usuarios || []).forEach(u => {
+                        const idVal = u._id || u.id || u.email || '';
+                        if (idVal) usersById[String(idVal)] = u;
+                    });
+
                     for (const ord of this._pedidos) {
                         try {
                             if ((!ord.cliente || Object.keys(ord.cliente).length === 0) && (ord.userId || ord.user || ord.usuario || ord.user_id)) {
-                                const uid = ord.userId || ord.user || ord.usuario || ord.user_id;
-                                const r = await fetch(`/api/users/${uid}`);
-                                if (r.ok) {
-                                    const u = await r.json();
-                                    ord.cliente = { nombre: u.nombre || u.name || `${u.nombre || ''} ${u.apellido || ''}`.trim(), email: u.email || '' };
+                                const uid = String(ord.userId || ord.user || ord.usuario || ord.user_id);
+                                const cached = usersById[uid];
+                                if (cached) {
+                                    ord.cliente = { nombre: cached.nombre || cached.name || `${cached.nombre || ''} ${cached.apellido || ''}`.trim(), email: cached.email || '' };
                                 } else {
-                                    // fallback: show the userId string as cliente.nombre so admin can at least see an identifier
-                                    ord.cliente = { nombre: String(uid), email: '' };
+                                    // If not found in the cached users, fallback to showing the raw id so admin sees an identifier.
+                                    ord.cliente = { nombre: uid, email: '' };
                                 }
                             }
                         } catch (e) {
-                            // ignore per-order failures; leave cliente as-is or set to userId
-                            try { if (!ord.cliente || Object.keys(ord.cliente).length === 0) ord.cliente = { nombre: String(ord.userId || ord.user || ord.usuario || ord.user_id || ''), email: '' }; } catch(_){}
+                            try { if (!ord.cliente || Object.keys(ord.cliente).length === 0) ord.cliente = { nombre: String(ord.userId || ord.user || ord.usuario || ord.user_id || ''), email: '' }; } catch(_){ }
                         }
                     }
-                })();
+                } catch (e) {
+                    console.warn('Could not populate order client info from users cache:', e);
+                }
             }
         } catch (err) {
             console.warn('No se pudo cargar pedidos desde server:', err);
@@ -225,6 +243,8 @@ class AdminPanelManager {
         }).then((result) => {
             if (result.isConfirmed) {
                 this.showAdminPanel();
+                // After a successful admin creation/login, ensure server data is loaded now that we have a token.
+                try { this.loadServerData(); } catch (e) { console.warn('Error loading server data after login:', e); }
             }
         });
     }
@@ -756,12 +776,32 @@ class AdminPanelManager {
             if (window.api && typeof window.api.getUsers === 'function') {
                 users = await window.api.getUsers();
             } else {
-                const token = getAuthToken();
-                const headers = { 'Content-Type': 'application/json' };
-                if (token) headers['Authorization'] = `Bearer ${token}`;
-                const res = await fetch('/api/users', { headers });
-                if (!res.ok) throw new Error('Failed fetching users');
-                users = await res.json();
+                // First, try an unauthenticated request so the users section can work
+                // even when no token is present (if the backend allows public access).
+                try {
+                    const unauthRes = await fetch('/api/users');
+                    if (unauthRes.ok) {
+                        users = await unauthRes.json();
+                    } else if (unauthRes.status === 401 || unauthRes.status === 403) {
+                        // Backend requires auth: fall back to token-based request
+                        const token = getAuthToken();
+                        const headers = { 'Content-Type': 'application/json' };
+                        if (token) headers['Authorization'] = `Bearer ${token}`;
+                        const res = await fetch('/api/users', { headers });
+                        if (!res.ok) {
+                            const txt = await res.text().catch(() => res.statusText || '');
+                            throw new Error(`HTTP ${res.status} ${txt}`);
+                        }
+                        users = await res.json();
+                    } else {
+                        // Other non-auth error: include status/text to bubble up
+                        const txt = await unauthRes.text().catch(() => unauthRes.statusText || '');
+                        throw new Error(`HTTP ${unauthRes.status} ${txt}`);
+                    }
+                } catch (fetchErr) {
+                    // Re-throw network errors to be handled by the outer catch/retry logic
+                    throw fetchErr;
+                }
             }
 
             // Normalize shape expected by admin UI
@@ -786,14 +826,57 @@ class AdminPanelManager {
             try {
                 const errEl = document.getElementById('usersError');
                 if (errEl) { errEl.style.display = 'none'; }
+                // If the users section is currently visible, re-render the table so the UI updates
+                try {
+                    const usersSection = document.getElementById('users-section');
+                    if (usersSection && usersSection.classList.contains('active')) {
+                        try { this.showUsers(); } catch(e){ console.warn('showUsers after fetchUsers success failed:', e); }
+                    }
+                } catch(e) { /* ignore */ }
             } catch (_) {}
             return normalized;
         } catch (err) {
             console.warn('fetchUsers error:', err);
-            // On failure, ensure the in-memory cache is an empty array and return [] instead of throwing.
+            // Ensure in-memory users cleared on error
             this._usuarios = [];
 
-            // Show a visible error message in the Users section (if present)
+            // Increment attempt counter
+            this._fetchUsersAttempts = (this._fetchUsersAttempts || 0) + 1;
+
+            // Detect likely auth errors (401/403) and, when detected, wait for a token to be set
+            const errStr = String(err || '').toLowerCase();
+            const isAuthError = errStr.includes('401') || errStr.includes('forbidden') || errStr.includes('unauthorized') || (err && err.status && (err.status === 401 || err.status === 403));
+
+            // If it's an auth problem and we still have retries left, wait for auth:token-set (or a short timeout) before retrying
+            if (isAuthError && this._fetchUsersAttempts <= 3) {
+                console.log('fetchUsers: probable auth error, waiting for auth:token-set before retrying (attempt', this._fetchUsersAttempts + ')');
+                try {
+                    await new Promise((resolve) => {
+                        let resolved = false;
+                        const onToken = () => { if (!resolved) { resolved = true; try { window.removeEventListener('auth:token-set', onToken); } catch(_){}; resolve(); } };
+                        window.addEventListener('auth:token-set', onToken, { once: true });
+                        // fallback timeout if token event doesn't fire
+                        setTimeout(() => { if (!resolved) { resolved = true; try { window.removeEventListener('auth:token-set', onToken); } catch(_){}; resolve(); } }, 1500 * this._fetchUsersAttempts);
+                    });
+                    return await this.fetchUsers();
+                } catch (e) {
+                    console.warn('fetchUsers auth wait failed:', e);
+                }
+            }
+
+            // Automatic retry with backoff for transient errors (up to 3 attempts)
+            if (this._fetchUsersAttempts <= 3) {
+                try {
+                    const backoff = 500 * this._fetchUsersAttempts; // 500ms, 1000ms, 1500ms
+                    console.log(`fetchUsers failed, will retry automatically in ${backoff}ms (attempt ${this._fetchUsersAttempts})`);
+                    await new Promise(res => setTimeout(res, backoff));
+                    return await this.fetchUsers();
+                } catch (retryErr) {
+                    console.warn('Automatic retry failed:', retryErr);
+                }
+            }
+
+            // After exhausting automatic retries, show a visible error message in the Users section (if present)
             try {
                 const errEl = document.getElementById('usersError');
                 const msgEl = document.getElementById('usersErrorMsg');
@@ -803,18 +886,6 @@ class AdminPanelManager {
                 if (retryBtn) retryBtn.disabled = false;
             } catch (e) {
                 // ignore UI errors
-            }
-            // Automatic retry: try up to 3 times with small backoff before giving control to the manual retry button.
-            try {
-                this._fetchUsersAttempts = (this._fetchUsersAttempts || 0) + 1;
-                if (this._fetchUsersAttempts <= 3) {
-                    const backoff = 500 * this._fetchUsersAttempts; // 500ms, 1000ms, 1500ms
-                    console.log(`fetchUsers failed, will retry automatically in ${backoff}ms (attempt ${this._fetchUsersAttempts})`);
-                    await new Promise(res => setTimeout(res, backoff));
-                    return await this.fetchUsers();
-                }
-            } catch (retryErr) {
-                console.warn('Automatic retry failed:', retryErr);
             }
 
             return [];
@@ -1845,30 +1916,113 @@ function adminLogout() {
     }
 }
 
+// --- Promo send handler ---
+// Attach event listener when DOM is ready. This mirrors the admin modal form in admin.html
+document.addEventListener('DOMContentLoaded', () => {
+    try {
+        const btn = document.getElementById('promoSendBtn');
+        if (!btn) return;
+        btn.addEventListener('click', async (ev) => {
+            try {
+                btn.disabled = true;
+                const subject = (document.getElementById('promoSubject')?.value || '').trim();
+                let html = (document.getElementById('promoHtml')?.value || '').trim();
+                const type = (document.getElementById('promoType')?.value || '').trim();
+                const sendAll = !!document.getElementById('promoSendAll')?.checked;
+                const emailsRaw = (document.getElementById('promoEmails')?.value || '').trim();
+                const coupon = (document.getElementById('promoCouponCode')?.value || '').trim();
+                const productId = (document.getElementById('promoProductId')?.value || '').trim();
+
+                if (!subject) {
+                    Swal.fire('Error', 'Ingrese el asunto de la promoción', 'error');
+                    btn.disabled = false;
+                    return;
+                }
+                if (!html) {
+                    Swal.fire('Error', 'Ingrese el contenido HTML/texto de la promoción', 'error');
+                    btn.disabled = false;
+                    return;
+                }
+
+                // Optionally inject product/coupon placeholders into html if provided
+                if (productId) {
+                    // If admin selected a product id, add a simple link placeholder
+                    const prodLink = `<p><a href="${location.origin}/product.html?id=${encodeURIComponent(productId)}">Ver producto</a></p>`;
+                    html = prodLink + html;
+                }
+                if (coupon) {
+                    html = `<p><strong>Cupón:</strong> ${escapeHtml(coupon)}</p>` + html;
+                }
+
+                const payload = { subject, html, target: sendAll ? 'all' : 'emails' };
+                if (!sendAll) {
+                    const emails = emailsRaw.split(/[,\n;]/).map(s => s.trim()).filter(Boolean);
+                    if (emails.length === 0) {
+                        Swal.fire('Error', 'Ingrese al menos un correo en la lista o marque "Enviar a todos los usuarios"', 'error');
+                        btn.disabled = false;
+                        return;
+                    }
+                    payload.emails = emails;
+                }
+
+                Swal.fire({ title: 'Enviando promociones...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+                const res = await fetch('/api/admin/send-promo', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const body = await res.json().catch(() => ({}));
+                Swal.close();
+                if (!res.ok) {
+                    console.error('send-promo failed', res.status, body);
+                    Swal.fire('Error', `No se pudo enviar la promoción (${res.status})`, 'error');
+                    btn.disabled = false;
+                    return;
+                }
+
+                let msg = `Promoción encolada para ${body.queued || 0} destinatarios`;
+                if (body.preview) msg += '<br><a href="' + body.preview + '" target="_blank">Ver email de prueba</a>';
+                Swal.fire({ title: 'Enviado', html: msg, icon: 'success' });
+                btn.disabled = false;
+                // Close modal if open
+                try { const modal = bootstrap.Modal.getInstance(document.getElementById('promoModal')); if (modal) modal.hide(); } catch(e){}
+            } catch (err) {
+                console.error('promoSendBtn handler error:', err);
+                Swal.fire('Error', err.message || 'Error enviando la promoción', 'error');
+                try { btn.disabled = false; } catch(e){}
+            }
+        });
+    } catch (e) {
+        console.warn('Could not attach promoSendBtn handler:', e);
+    }
+});
 // Retry helper exposed globally for the retry button in admin.html
-function retryFetchUsers() {
-    (async () => {
-        try {
-            const btn = document.getElementById('usersRetryBtn');
-            if (btn) btn.disabled = true;
-            if (!adminManager || typeof adminManager.fetchUsers !== 'function') {
-                console.warn('adminManager not available for retry');
-                if (btn) btn.disabled = false;
-                return;
-            }
-            const users = await adminManager.fetchUsers();
-            adminManager.showUsers();
-            // hide error area if successful and users found
-            try { const errEl = document.getElementById('usersError'); if (errEl) errEl.style.display = 'none'; } catch(_){}
-            if (!users || users.length === 0) {
-                // If still empty, re-enable button so admin can try again
-                if (btn) btn.disabled = false;
-            }
-        } catch (err) {
-            console.error('retryFetchUsers error:', err);
-            try { const btn = document.getElementById('usersRetryBtn'); if (btn) btn.disabled = false; } catch(_){}
+// Converted to an async function that returns true on success, false on failure.
+async function retryFetchUsers() {
+    try {
+        const btn = document.getElementById('usersRetryBtn');
+        if (btn) btn.disabled = true;
+        if (!adminManager || typeof adminManager.fetchUsers !== 'function') {
+            console.warn('adminManager not available for retry');
+            if (btn) btn.disabled = false;
+            return false;
         }
-    })();
+        const users = await adminManager.fetchUsers();
+        adminManager.showUsers();
+        // hide error area if successful and users found
+        try { const errEl = document.getElementById('usersError'); if (errEl) errEl.style.display = 'none'; } catch(_){ }
+        if (!users || users.length === 0) {
+            // If still empty, re-enable button so admin can try again
+            if (btn) btn.disabled = false;
+            return false;
+        }
+        if (btn) btn.disabled = false;
+        return true;
+    } catch (err) {
+        console.error('retryFetchUsers error:', err);
+        try { const btn = document.getElementById('usersRetryBtn'); if (btn) btn.disabled = false; } catch(_){ }
+        return false;
+    }
 }
 
 // Funciones para mostrar secciones
@@ -1894,14 +2048,22 @@ async function showProducts() {
 // Show users (already implemented above) - keep async signature
 async function showUsers() {
     showSection('users');
+    // Try the same flow used by the manual "Reintentar" button so the
+    // initial navigation behaves exactly like clicking that button.
     try {
-        if (adminManager && typeof adminManager.fetchUsers === 'function') {
+        if (typeof retryFetchUsers === 'function') {
+            const ok = await retryFetchUsers();
+            // If retryFetchUsers succeeded it already called adminManager.showUsers()
+            if (ok) return;
+            // otherwise fallthrough to show whatever we have (empty state or error)
+        } else if (adminManager && typeof adminManager.fetchUsers === 'function') {
             await adminManager.fetchUsers();
         }
     } catch (err) {
         console.warn('Could not refresh users from server:', err);
     }
-    adminManager.showUsers();
+    // Ensure UI renders current in-memory users (may be empty)
+    try { adminManager.showUsers(); } catch (e) { console.warn('showUsers render failed:', e); }
 }
 
 // Show orders section and refresh orders from server when possible

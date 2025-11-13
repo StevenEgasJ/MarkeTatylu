@@ -847,7 +847,9 @@ async function showFinalInvoice(order) {
         </tr>`
     ).join('');
 
-    await Swal.fire({
+    // Show invoice modal but keep it open when the user clicks "Descargar PDF".
+    // We use preConfirm to trigger the PDF download and return false so the modal does not close.
+    const result = await Swal.fire({
         title: '¡Compra Realizada con Éxito!',
         html: `
             <div class="text-start">
@@ -908,24 +910,33 @@ async function showFinalInvoice(order) {
         showCancelButton: true,
         cancelButtonText: 'Ver Mis Compras',
         showDenyButton: true,
-        denyButtonText: 'Volver al Inicio',
+        denyButtonText: 'Ir a productos',
         confirmButtonColor: '#28a745',
         cancelButtonColor: '#007bff',
         denyButtonColor: '#6c757d',
-        width: '800px'
-    }).then((result) => {
-        if (result.isConfirmed) {
-            // Descargar PDF
-            downloadInvoicePDF(order);
-        } else {
-            // Stay on the checkout page — do not auto-navigate.
+        width: '800px',
+        allowOutsideClick: false,
+        preConfirm: () => {
             try {
-                if (typeof Swal !== 'undefined' && Swal.fire) {
-                    Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Orden guardada', showConfirmButton: false, timer: 1200 });
-                }
-            } catch (e) { /* ignore */ }
+                // Trigger PDF download but prevent modal from closing
+                downloadInvoicePDF(order);
+            } catch (err) {
+                console.error('Error triggering invoice download:', err);
+            }
+            // Returning false prevents the modal from closing automatically
+            return false;
         }
     });
+
+    // Handle deny/cancel actions after the modal is finally closed by the user
+    try {
+        if (result && result.isDenied) {
+            // Go to products page as requested
+            window.location.href = 'product.html';
+        } else if (result && result.isDismissed) {
+            // User dismissed the modal (no automatic navigation). Keep them on checkout.
+        }
+    } catch (e) { console.warn('post-invoice action failed', e); }
 }
 
 // Función para inicializar mapa en confirmación de ubicación

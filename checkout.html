@@ -43,6 +43,13 @@
     }
     .discount-line { color: #0b5; font-weight: 600; }
   </style>
+  <!-- Page-local override: hide SweetAlert2 toast notifications on checkout page
+       This prevents the small "Orden guardada" toast from appearing here
+       without modifying any JavaScript logic. -->
+  <style>
+    /* Hide Swal2 toast containers only on this page */
+    .swal2-container .swal2-toast { display: none !important; }
+  </style>
 </head>
 <body>
   <!-- Full header + nav (copied from cart.html for style consistency) -->
@@ -176,7 +183,7 @@
         <!-- Columna de información de contacto -->
         <div class="col-md-5 text-center mb-2 mb-md-0 me-md-5">
           <h4 class="h5 mb-2">Información de Contacto</h4>
-          <p class="mb-1"><i class="fa-solid fa-envelope me-2"></i>ventas@tatylu.com</p>
+          <p class="mb-1"><i class="fa-solid fa-envelope me-2"></i><a href="mailto:villacreses.tati1977@gmail.com" class="text-dark">villacreses.tati1977@gmail.com</a></p>
           <p class="mb-1"><i class="fa-solid fa-location-dot me-2"></i>Avenida Maldonado S29-106, Quito</p>
           <p class="mb-1"><i class="fa-solid fa-phone me-2"></i>+593967967369</p>
         </div>
@@ -185,13 +192,13 @@
         <div class="col-md-4 text-center ms-md-5">
           <h4 class="h5 mb-2">Síguenos</h4>
           <div class="social-icons">
-            <a href="https://www.facebook.com/tatylu" class="me-3">
+      <a href="https://www.facebook.com/share/1AJVbvMWzj/" class="me-3" target="_blank" rel="noopener noreferrer">
               <i class="fa-brands fa-facebook"></i>
             </a>
             <a href="https://www.instagram.com/tatylu/" class="me-3">
               <i class="fa-brands fa-instagram"></i>
             </a>
-            <a href="https://www.tiktok.com/@tatylu?lang=es" class="me-3">
+      <a href="https://vm.tiktok.com/ZMA43cKEe/" class="me-3" target="_blank" rel="noopener noreferrer">
               <i class="fa-brands fa-tiktok"></i>
             </a>
           </div>

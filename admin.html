@@ -348,13 +348,7 @@
                             <i class="fa-solid fa-user-plus me-2"></i>Agregar Usuario
                         </button>
                     </div>
-                    <!-- Error / status area for users section -->
-                    <div id="usersError" style="display:none;" class="alert alert-warning d-flex justify-content-between align-items-center">
-                        <div id="usersErrorMsg">Error cargando usuarios</div>
-                        <div>
-                            <button class="btn btn-sm btn-outline-primary" id="usersRetryBtn" onclick="retryFetchUsers()">Reintentar</button>
-                        </div>
-                    </div>
+                    <!-- (removed users error/status box - automatic retry now performs the same action as the Reintentar button) -->
                     
                     <div class="table-responsive">
                         <table class="table table-striped">
@@ -934,6 +928,16 @@
             const userLink = document.querySelector('.sidebar .nav-link[onclick^="showUsers"]');
             if (userLink) userLink.classList.add('active');
             _showSectionById('users-section');
+            // Automatically perform the same action as the "Reintentar" button so the
+            // users table refreshes without requiring a manual click.
+            try {
+                if (typeof retryFetchUsers === 'function') {
+                    // fire-and-forget; retryFetchUsers will call adminManager.showUsers() on success
+                    retryFetchUsers().catch(err => console.warn('retryFetchUsers failed from showUsers:', err));
+                } else if (typeof adminManager !== 'undefined' && typeof adminManager.fetchUsers === 'function') {
+                    adminManager.fetchUsers().then(() => { try { adminManager.showUsers(); } catch(e){}}).catch(err => { try { adminManager.showUsers(); } catch(e){}; console.warn('fetchUsers failed from showUsers:', err); });
+                }
+            } catch (e) { console.warn('Error triggering users refresh:', e); }
         }
 
         function showOrders() {
