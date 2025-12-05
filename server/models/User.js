@@ -1,8 +1,8 @@
 const mongoose = require('mongoose');
 
 const userSchema = new mongoose.Schema({
+  id: { type: String, trim: true, unique: true, sparse: true },
   nombre: { type: String, required: true },
-  publicId: { type: String, trim: true, unique: true, sparse: true },
   isAdmin: { type: Boolean, default: false },
   apellido: { type: String },
   email: { type: String, required: true, unique: true },
@@ -17,19 +17,16 @@ const userSchema = new mongoose.Schema({
   fechaRegistro: { type: Date, default: Date.now },
   cart: { type: Array, default: [] },
   orders: { type: Array, default: [] }
-});
-
-userSchema.virtual('id').get(function() {
-  return this.publicId || (this._id ? this._id.toString() : undefined);
+}, {
+  id: false
 });
 
 userSchema.set('toJSON', {
-  virtuals: true,
   versionKey: false
 });
 
 userSchema.set('toObject', {
-  virtuals: true
+  versionKey: false
 });
 
 module.exports = mongoose.model('User', userSchema);

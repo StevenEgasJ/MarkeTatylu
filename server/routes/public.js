@@ -17,7 +17,7 @@ function normalizeId(value) {
 function sanitizeUser(userDoc) {
   if (!userDoc) return null;
   const plain = userDoc.toObject ? userDoc.toObject({ virtuals: true }) : { ...userDoc };
-  const preferredId = plain.publicId || plain.id || (plain._id ? plain._id.toString() : undefined);
+  const preferredId = plain.id || (plain._id ? plain._id.toString() : undefined);
   plain.id = preferredId;
   delete plain.passwordHash;
   delete plain.emailVerificationToken;
@@ -62,9 +62,9 @@ async function fetchByIdentifier({ Model, identifier, select, sortField, lean = 
   return { doc: docs[0], usedIndex: true };
 }
 
-async function queryUserByPublicId(value, { select, lean = true } = {}) {
+async function queryUserByCustomId(value, { select, lean = true } = {}) {
   if (!value) return null;
-  let query = User.findOne({ publicId: value });
+  let query = User.findOne({ id: value });
   if (select) query = query.select(select);
   if (lean) query = query.lean({ virtuals: true });
   return query.exec();
@@ -74,8 +74,8 @@ async function resolveUserByIdentifier(identifier, { select, lean = true } = {})
   const normalized = normalizeId(identifier);
   if (!normalized) return { error: 'Identifier must be provided' };
 
-  const byPublicId = await queryUserByPublicId(normalized, { select, lean });
-  if (byPublicId) return { doc: byPublicId };
+  const byCustomId = await queryUserByCustomId(normalized, { select, lean });
+  if (byCustomId) return { doc: byCustomId };
 
   return fetchByIdentifier({
     Model: User,
@@ -119,7 +119,7 @@ router.post(['/user', '/users'], async (req, res) => {
       return res.status(409).json({ error: 'Email already registered' });
     }
 
-    const idExists = await User.findOne({ publicId: requestedId }).select('_id');
+    const idExists = await User.findOne({ id: requestedId }).select('_id');
     if (idExists) {
       return res.status(409).json({ error: 'id already registered' });
     }
@@ -128,7 +128,7 @@ router.post(['/user', '/users'], async (req, res) => {
     const passwordHash = await bcrypt.hash(password, salt);
 
     const newUser = new User({
-      publicId: requestedId,
+      id: requestedId,
       nombre,
       apellido: req.body.apellido,
       email,
@@ -168,7 +168,7 @@ router.get(['/user/:identifier', '/users/:identifier'], async (req, res) => {
 router.put(['/user/:identifier', '/users/:identifier'], async (req, res) => {
   try {
     const { doc, error } = await resolveUserByIdentifier(req.params.identifier, {
-      select: '_id publicId',
+      select: '_id id',
       lean: false
     });
 
@@ -195,9 +195,9 @@ router.put(['/user/:identifier', '/users/:identifier'], async (req, res) => {
     if (Object.prototype.hasOwnProperty.call(req.body, 'id')) {
       const newId = normalizeId(req.body.id);
       if (!newId) return res.status(400).json({ error: 'id cannot be empty' });
-      const idOwner = await User.findOne({ publicId: newId, _id: { $ne: doc._id } }).select('_id');
+      const idOwner = await User.findOne({ id: newId, _id: { $ne: doc._id } }).select('_id');
       if (idOwner) return res.status(409).json({ error: 'id already registered' });
-      updates.publicId = newId;
+      updates.id = newId;
     }
 
     if (Object.prototype.hasOwnProperty.call(req.body, 'isAdmin')) {
@@ -238,6 +238,28 @@ router.delete(['/user/:identifier', '/users/:identifier'], async (req, res) => {
     res.json({ success: true });
   } catch (err) {
     console.error('Public user delete failed:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// DELETE /user (alias /users) by providing id in body or query
+router.delete(['/user', '/users'], async (req, res) => {
+  try {
+    const identifier = normalizeId(req.body && req.body.id ? req.body.id : req.query && req.query.id);
+    if (!identifier) return res.status(400).json({ error: 'id is required' });
+
+    const { doc, error } = await resolveUserByIdentifier(identifier, {
+      select: '_id',
+      lean: false
+    });
+
+    if (error) return res.status(400).json({ error });
+    if (!doc) return res.status(404).json({ error: 'User not found' });
+
+    await User.findByIdAndDelete(doc._id);
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Public user delete-by-id failed:', err);
     res.status(500).json({ error: 'Server error' });
   }
 });
