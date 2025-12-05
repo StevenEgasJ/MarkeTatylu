@@ -4,6 +4,7 @@ const bcrypt = require('bcryptjs');
 const User = require('../models/User');
 const Product = require('../models/Product');
 const Review = require('../models/Review');
+const Order = require('../models/Order');
 
 const router = express.Router();
 const SAFE_USER_FIELDS = '-passwordHash -emailVerificationToken -emailVerificationExpires';
@@ -299,6 +300,102 @@ router.get('/products/:identifier', async (req, res) => {
   }
 });
 
+// POST /products - create a new product
+router.post('/products', async (req, res) => {
+  try {
+    const nombre = String(req.body.nombre || '').trim();
+    const precio = Number(req.body.precio);
+    if (!nombre) return res.status(400).json({ error: 'nombre is required' });
+    if (!Number.isFinite(precio) || precio < 0) return res.status(400).json({ error: 'precio must be a non-negative number' });
+
+    const product = new Product({
+      nombre,
+      precio,
+      categoria: req.body.categoria,
+      stock: Number.isFinite(Number(req.body.stock)) ? Number(req.body.stock) : undefined,
+      descuento: Number.isFinite(Number(req.body.descuento)) ? Number(req.body.descuento) : undefined,
+      imagen: req.body.imagen,
+      descripcion: req.body.descripcion
+    });
+
+    const saved = await product.save();
+    res.status(201).json(saved);
+  } catch (err) {
+    console.error('Public product create failed:', err);
+    res.status(400).json({ error: 'Invalid product payload' });
+  }
+});
+
+// PUT /products/:identifier - update a product
+router.put('/products/:identifier', async (req, res) => {
+  try {
+    const { doc, error } = await fetchByIdentifier({
+      Model: Product,
+      identifier: req.params.identifier,
+      select: '_id',
+      sortField: 'fechaCreacion',
+      lean: false
+    });
+    if (error) return res.status(400).json({ error });
+    if (!doc) return res.status(404).json({ error: 'Product not found' });
+
+    const updates = {};
+    ['nombre', 'categoria', 'imagen', 'descripcion'].forEach((field) => {
+      if (Object.prototype.hasOwnProperty.call(req.body, field)) {
+        updates[field] = req.body[field] == null ? '' : String(req.body[field]).trim();
+      }
+    });
+
+    if (Object.prototype.hasOwnProperty.call(req.body, 'precio')) {
+      const precio = Number(req.body.precio);
+      if (!Number.isFinite(precio) || precio < 0) return res.status(400).json({ error: 'precio must be a non-negative number' });
+      updates.precio = precio;
+    }
+
+    if (Object.prototype.hasOwnProperty.call(req.body, 'stock')) {
+      const stock = Number(req.body.stock);
+      if (!Number.isInteger(stock) || stock < 0) return res.status(400).json({ error: 'stock must be a non-negative integer' });
+      updates.stock = stock;
+    }
+
+    if (Object.prototype.hasOwnProperty.call(req.body, 'descuento')) {
+      const descuento = Number(req.body.descuento);
+      if (!Number.isFinite(descuento) || descuento < 0) return res.status(400).json({ error: 'descuento must be a non-negative number' });
+      updates.descuento = descuento;
+    }
+
+    if (Object.keys(updates).length === 0) return res.status(400).json({ error: 'No updatable fields provided' });
+    updates.fechaModificacion = new Date();
+
+    const updated = await Product.findByIdAndUpdate(doc._id, { $set: updates }, { new: true, runValidators: true });
+    res.json(updated);
+  } catch (err) {
+    console.error('Public product update failed:', err);
+    res.status(400).json({ error: 'Invalid update payload' });
+  }
+});
+
+// DELETE /products/:identifier
+router.delete('/products/:identifier', async (req, res) => {
+  try {
+    const { doc, error } = await fetchByIdentifier({
+      Model: Product,
+      identifier: req.params.identifier,
+      select: '_id',
+      sortField: 'fechaCreacion',
+      lean: false
+    });
+    if (error) return res.status(400).json({ error });
+    if (!doc) return res.status(404).json({ error: 'Product not found' });
+
+    await Product.findByIdAndDelete(doc._id);
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Public product delete failed:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 // Reviews listing available at /review or /reviews
 router.get(['/review', '/reviews'], async (req, res) => {
   try {
@@ -473,6 +570,128 @@ router.delete('/reviews/product/:productId', async (req, res) => {
     res.json({ success: true, deletedCount: result.deletedCount });
   } catch (err) {
     console.error('Public reviews delete by product failed:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Orders listing available at /orders
+router.get('/orders', async (req, res) => {
+  try {
+    const limit = parseLimit(req.query.limit);
+    const orders = await Order.find()
+      .sort({ fecha: -1, _id: -1 })
+      .limit(limit)
+      .lean({ virtuals: true });
+    res.json(orders);
+  } catch (err) {
+    console.error('Public orders list failed:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// GET /orders/:identifier
+router.get('/orders/:identifier', async (req, res) => {
+  try {
+    const { doc, error } = await fetchByIdentifier({
+      Model: Order,
+      identifier: req.params.identifier,
+      select: undefined,
+      sortField: 'fecha',
+      lean: true
+    });
+    if (error) return res.status(400).json({ error });
+    if (!doc) return res.status(404).json({ error: 'Order not found' });
+    res.json(doc);
+  } catch (err) {
+    console.error('Public order lookup failed:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// POST /orders - create a new order
+router.post('/orders', async (req, res) => {
+  try {
+    let userId;
+    if (req.body.userId) {
+      if (!Types.ObjectId.isValid(req.body.userId)) return res.status(400).json({ error: 'Invalid userId format' });
+      userId = Types.ObjectId(req.body.userId);
+    }
+
+    const order = new Order({
+      userId,
+      items: Array.isArray(req.body.items) ? req.body.items : [],
+      resumen: req.body.resumen || {},
+      estado: req.body.estado || undefined
+    });
+
+    const saved = await order.save();
+    res.status(201).json(saved);
+  } catch (err) {
+    console.error('Public order create failed:', err);
+    res.status(400).json({ error: 'Invalid order payload' });
+  }
+});
+
+// PUT /orders/:identifier - update an order
+router.put('/orders/:identifier', async (req, res) => {
+  try {
+    const { doc, error } = await fetchByIdentifier({
+      Model: Order,
+      identifier: req.params.identifier,
+      select: '_id',
+      sortField: 'fecha',
+      lean: false
+    });
+    if (error) return res.status(400).json({ error });
+    if (!doc) return res.status(404).json({ error: 'Order not found' });
+
+    const updates = {};
+
+    if (Object.prototype.hasOwnProperty.call(req.body, 'items')) {
+      if (!Array.isArray(req.body.items)) return res.status(400).json({ error: 'items must be an array' });
+      updates.items = req.body.items;
+    }
+
+    if (Object.prototype.hasOwnProperty.call(req.body, 'resumen')) {
+      updates.resumen = req.body.resumen || {};
+    }
+
+    if (Object.prototype.hasOwnProperty.call(req.body, 'estado')) {
+      updates.estado = String(req.body.estado || '').trim();
+    }
+
+    if (Object.prototype.hasOwnProperty.call(req.body, 'userId')) {
+      if (!req.body.userId || !Types.ObjectId.isValid(req.body.userId)) return res.status(400).json({ error: 'Invalid userId format' });
+      updates.userId = Types.ObjectId(req.body.userId);
+    }
+
+    if (Object.keys(updates).length === 0) return res.status(400).json({ error: 'No updatable fields provided' });
+
+    const updated = await Order.findByIdAndUpdate(doc._id, { $set: updates }, { new: true, runValidators: true });
+    res.json(updated);
+  } catch (err) {
+    console.error('Public order update failed:', err);
+    res.status(400).json({ error: 'Invalid update payload' });
+  }
+});
+
+// DELETE /orders/:identifier
+router.delete('/orders/:identifier', async (req, res) => {
+  try {
+    const { doc, error } = await fetchByIdentifier({
+      Model: Order,
+      identifier: req.params.identifier,
+      select: '_id',
+      sortField: 'fecha',
+      lean: false
+    });
+    if (error) return res.status(400).json({ error });
+    if (!doc) return res.status(404).json({ error: 'Order not found' });
+
+    await Order.findByIdAndDelete(doc._id);
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Public order delete failed:', err);
     res.status(500).json({ error: 'Server error' });
   }
 });
