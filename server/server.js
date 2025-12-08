@@ -9,6 +9,7 @@ const authRouter = require('./routes/auth');
 const cartRouter = require('./routes/cart');
 const adminRouter = require('./routes/admin');
 const checkoutRouter = require('./routes/checkout');
+const invoicesRouter = require('./routes/invoices');
 const debugRouter = require('./routes/debug');
 const ordersRouter = require('./routes/orders');
 const usersRouter = require('./routes/users');
@@ -72,6 +73,7 @@ app.use('/api/cart', cartRouter);
 // Mount admin routes under /api/admin to match frontend expectations
 app.use('/api/admin', adminRouter);
 app.use('/api/checkout', checkoutRouter);
+app.use('/api/invoices', invoicesRouter);
 app.use('/api/orders', ordersRouter);
 app.use('/api/users', usersRouter);
 app.use('/api/reviews', reviewsRouter);

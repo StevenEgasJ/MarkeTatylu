@@ -91,7 +91,7 @@ router.post('/', authMiddleware, async (req, res) => {
         const user = await User.findById(userId).session(session);
         if (user) {
           user.orders = user.orders || [];
-          user.orders.push({ orderId: order._id, fecha: order.fecha, resumen: order.resumen });
+          user.orders.push({ orderId: order._id, codigo: order.id, fecha: order.fecha, resumen: order.resumen });
           user.cart = [];
           await user.save({ session });
         }
@@ -127,7 +127,7 @@ router.post('/', authMiddleware, async (req, res) => {
         }
       })();
 
-      return res.json({ success: true, orderId: committedOrder._id });
+      return res.json({ success: true, orderId: committedOrder._id, orderCode: committedOrder.id });
     } catch (err) {
       // Abort this session and check if we should retry
       try { await session.abortTransaction(); } catch (e) { /* ignore */ }

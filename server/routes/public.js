@@ -40,8 +40,18 @@ function classifyIdentifier(identifier) {
   return { mode: 'invalid' };
 }
 
-async function fetchByIdentifier({ Model, identifier, select, sortField, lean = true }) {
-  const classification = classifyIdentifier(identifier);
+async function fetchByIdentifier({ Model, identifier, select, sortField, lean = true, customIdField }) {
+  const normalized = identifier === undefined || identifier === null ? '' : String(identifier).trim();
+
+  if (customIdField && normalized) {
+    let customQuery = Model.findOne({ [customIdField]: normalized });
+    if (select) customQuery = customQuery.select(select);
+    if (lean) customQuery = customQuery.lean({ virtuals: true });
+    const customDoc = await customQuery.exec();
+    if (customDoc) return { doc: customDoc };
+  }
+
+  const classification = classifyIdentifier(normalized);
   if (classification.mode === 'invalid') {
     return { error: 'Identifier must be a Mongo ObjectId or a positive integer index.' };
   }
@@ -597,7 +607,8 @@ router.get('/orders/:identifier', async (req, res) => {
       identifier: req.params.identifier,
       select: undefined,
       sortField: 'fecha',
-      lean: true
+      lean: true,
+      customIdField: 'id'
     });
     if (error) return res.status(400).json({ error });
     if (!doc) return res.status(404).json({ error: 'Order not found' });
@@ -640,7 +651,8 @@ router.put('/orders/:identifier', async (req, res) => {
       identifier: req.params.identifier,
       select: '_id',
       sortField: 'fecha',
-      lean: false
+      lean: false,
+      customIdField: 'id'
     });
     if (error) return res.status(400).json({ error });
     if (!doc) return res.status(404).json({ error: 'Order not found' });
@@ -683,7 +695,8 @@ router.delete('/orders/:identifier', async (req, res) => {
       identifier: req.params.identifier,
       select: '_id',
       sortField: 'fecha',
-      lean: false
+      lean: false,
+      customIdField: 'id'
     });
     if (error) return res.status(400).json({ error });
     if (!doc) return res.status(404).json({ error: 'Order not found' });
