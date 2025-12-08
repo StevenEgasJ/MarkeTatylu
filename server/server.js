@@ -73,7 +73,7 @@ app.use('/api/cart', cartRouter);
 // Mount admin routes under /api/admin to match frontend expectations
 app.use('/api/admin', adminRouter);
 app.use('/api/checkout', checkoutRouter);
-app.use('/api/invoices', invoicesRouter);
+app.use('/invoice', invoicesRouter);
 app.use('/api/orders', ordersRouter);
 app.use('/api/users', usersRouter);
 app.use('/api/reviews', reviewsRouter);

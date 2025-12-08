@@ -82,6 +82,160 @@ function escapeHtml(str) {
   return String(str).replace(/[&<>"']/g, (m) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m] || m));
 }
 
+function formatMoney(value) {
+  return toNumber(value, 0).toFixed(2);
+}
+
+function normalizeProducts(order) {
+  if (Array.isArray(order?.resumen?.productos) && order.resumen.productos.length) {
+    return order.resumen.productos.map((prod, idx) => ({
+      nombre: prod.nombre || `Producto ${idx + 1}`,
+      cantidad: prod.cantidad || prod.quantity || 0,
+      precio: prod.precio || prod.unitPrice || 0,
+      subtotal: prod.subtotal || prod.lineTotal || 0
+    }));
+  }
+
+  if (Array.isArray(order?.productos) && order.productos.length) {
+    return order.productos.map((prod, idx) => ({
+      nombre: prod.nombre || `Producto ${idx + 1}`,
+      cantidad: prod.cantidad || prod.quantity || 0,
+      precio: prod.precio || prod.unitPrice || 0,
+      subtotal: prod.subtotal || prod.lineTotal || 0
+    }));
+  }
+
+  if (Array.isArray(order?.items) && order.items.length) {
+    return order.items.map((item, idx) => ({
+      nombre: item.nombre || item.productName || `Producto ${idx + 1}`,
+      cantidad: item.cantidad || item.quantity || 0,
+      precio: item.precio || item.unitPrice || 0,
+      subtotal: item.lineTotal || ((item.unitPrice || 0) * (item.cantidad || 0))
+    }));
+  }
+
+  return [];
+}
+
+function normalizeTotals(order, productos = []) {
+  const baseTotals = order?.resumen?.totales || order?.totales || {};
+  const subtotal = baseTotals.subtotal ?? productos.reduce((sum, prod) => sum + toNumber(prod.subtotal, 0), 0);
+  const iva = baseTotals.iva ?? baseTotals.taxes ?? baseTotals.tax ?? 0;
+  const envio = baseTotals.envio ?? baseTotals.shipping ?? 0;
+  const discount = baseTotals.discount ?? 0;
+  const total = baseTotals.total ?? roundMoney(subtotal + iva + envio - discount);
+  return {
+    subtotal: roundMoney(toNumber(subtotal, 0)),
+    iva: roundMoney(toNumber(iva, 0)),
+    envio: roundMoney(toNumber(envio, 0)),
+    discount: roundMoney(Math.max(0, toNumber(discount, 0))),
+    total: roundMoney(toNumber(total, 0))
+  };
+}
+
+function renderInvoiceHtml(order) {
+  const productos = normalizeProducts(order);
+  const totales = normalizeTotals(order, productos);
+  const cliente = order?.resumen?.cliente || order?.cliente || {};
+  const entrega = order?.resumen?.entrega || order?.entrega || {};
+  const pago = order?.resumen?.pago || order?.pago || {};
+  const numeroFactura = order?.resumen?.invoiceNumber || order?.numeroFactura || order?.id || order?._id;
+  const fecha = order?.fecha ? new Date(order.fecha).toLocaleString('es-EC') : new Date().toLocaleString('es-EC');
+
+  const productRows = productos.map((item) => (
+    `<tr>
+        <td>${escapeHtml(item.nombre)}</td>
+        <td class="text-center">${item.cantidad}</td>
+        <td class="text-right">$${formatMoney(item.precio)}</td>
+        <td class="text-right">$${formatMoney(item.subtotal)}</td>
+      </tr>`
+  )).join('') || '<tr><td colspan="4" class="text-center">Sin productos</td></tr>';
+
+  return `<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Factura ${escapeHtml(String(numeroFactura || ''))}</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; color: #222; }
+    .header { text-align: center; border-bottom: 2px solid #007bff; padding-bottom: 20px; margin-bottom: 20px; }
+    .logo { color: #007bff; font-size: 24px; font-weight: bold; }
+    table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+    th, td { border: 1px solid #ddd; padding: 8px; }
+    th { background-color: #f8f9fa; }
+    .text-right { text-align: right; }
+    .text-center { text-align: center; }
+    .totals { width: 320px; margin-left: auto; }
+    .totals td { border: none; }
+    .totals tr { border-bottom: 1px solid #eee; }
+    .totals tr:last-child { border-bottom: none; }
+    .totals .total-final { background: #e8f5e8; font-weight: bold; }
+    .section-title { margin-top: 30px; font-size: 18px; border-bottom: 1px solid #ddd; padding-bottom: 5px; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="logo">Tatylu, Viveres</div>
+    <p>Viveres de calidad</p>
+    <p>Avenida Maldonado S29-106, Quito | +593 967 967 369</p>
+  </div>
+
+  <h2>Factura #${escapeHtml(String(numeroFactura || ''))}</h2>
+  <p><strong>Fecha:</strong> ${escapeHtml(fecha)}</p>
+  <p><strong>Cliente:</strong> ${escapeHtml(`${cliente.nombre || ''} ${cliente.apellido || ''}`.trim() || 'N/D')}</p>
+  <p><strong>Email:</strong> ${escapeHtml(cliente.email || 'N/D')}</p>
+  <p><strong>Teléfono:</strong> ${escapeHtml(cliente.telefono || 'N/D')}</p>
+
+  <h3 class="section-title">Productos</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>Producto</th>
+        <th class="text-center">Cantidad</th>
+        <th class="text-right">Precio unit.</th>
+        <th class="text-right">Subtotal</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${productRows}
+    </tbody>
+  </table>
+
+  <table class="totals">
+    <tr>
+      <td>Subtotal:</td>
+      <td class="text-right">$${formatMoney(totales.subtotal)}</td>
+    </tr>
+    <tr>
+      <td>IVA (15%):</td>
+      <td class="text-right">$${formatMoney(totales.iva)}</td>
+    </tr>
+    <tr>
+      <td>Envío:</td>
+      <td class="text-right">$${formatMoney(totales.envio)}</td>
+    </tr>
+    ${totales.discount ? `<tr><td>Descuento:</td><td class="text-right">-$${formatMoney(totales.discount)}</td></tr>` : ''}
+    <tr class="total-final">
+      <td>Total:</td>
+      <td class="text-right">$${formatMoney(totales.total)}</td>
+    </tr>
+  </table>
+
+  <div class="section-title">Entrega</div>
+  <p><strong>Dirección:</strong> ${escapeHtml(entrega.direccion || 'N/D')}</p>
+  <p><strong>Contacto:</strong> ${escapeHtml(entrega.contacto || entrega.telefono || 'N/D')}</p>
+  <p><strong>Referencias:</strong> ${escapeHtml(entrega.referencias || 'N/D')}</p>
+
+  <div class="section-title">Pago</div>
+  <p><strong>Método:</strong> ${escapeHtml(pago.metodoPagoNombre || pago.metodo || 'N/D')}</p>
+  <p><strong>Estado:</strong> ${escapeHtml(pago.estado || 'pagado')}</p>
+  <p><strong>Referencia:</strong> ${escapeHtml(pago.referencia || 'N/D')}</p>
+
+  <p style="margin-top:40px; text-align:center; font-size:12px; color:#666;">Gracias por tu compra en Tatylu, Viveres.</p>
+</body>
+</html>`;
+}
+
 router.post('/', async (req, res) => {
   let session = null;
   try {
@@ -136,7 +290,7 @@ router.post('/', async (req, res) => {
     let committedOrder = null;
 
     await session.withTransaction(async () => {
-      const ids = sanitizedItems.map(it => mongoose.Types.ObjectId(it.productId));
+      const ids = sanitizedItems.map(it => new mongoose.Types.ObjectId(it.productId));
       const productDocs = await Product.find({ _id: { $in: ids } }).session(session);
       const productMap = new Map(productDocs.map(doc => [doc._id.toString(), doc]));
 
@@ -319,6 +473,25 @@ router.post('/', async (req, res) => {
         console.warn('Could not end invoice session:', e);
       }
     }
+  }
+});
+
+router.get('/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ error: 'Invalid order id' });
+    }
+    const order = await Order.findById(id).lean();
+    if (!order) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+    const html = renderInvoiceHtml(order);
+    res.set('Content-Type', 'text/html; charset=utf-8');
+    res.send(html);
+  } catch (err) {
+    console.error('Error fetching invoice HTML:', err);
+    res.status(500).json({ error: 'Unable to render invoice' });
   }
 });
 
