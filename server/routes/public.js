@@ -407,6 +407,31 @@ router.delete('/products/:identifier', async (req, res) => {
   }
 });
 
+// DELETE /products by providing id in body or query
+router.delete('/products', async (req, res) => {
+  try {
+    const identifier = normalizeId(req.body && req.body.id ? req.body.id : req.query && req.query.id);
+    if (!identifier) return res.status(400).json({ error: 'id is required' });
+
+    const { doc, error } = await fetchByIdentifier({
+      Model: Product,
+      identifier,
+      select: '_id',
+      sortField: 'fechaCreacion',
+      lean: false
+    });
+
+    if (error) return res.status(400).json({ error });
+    if (!doc) return res.status(404).json({ error: 'Product not found' });
+
+    await Product.findByIdAndDelete(doc._id);
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Public product delete-by-id failed:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 // Reviews listing available at /review or /reviews
 router.get(['/review', '/reviews'], async (req, res) => {
   try {
@@ -706,6 +731,32 @@ router.delete('/orders/:identifier', async (req, res) => {
     res.json({ success: true });
   } catch (err) {
     console.error('Public order delete failed:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// DELETE /orders by providing id in body or query
+router.delete('/orders', async (req, res) => {
+  try {
+    const identifier = normalizeId(req.body && req.body.id ? req.body.id : req.query && req.query.id);
+    if (!identifier) return res.status(400).json({ error: 'id is required' });
+
+    const { doc, error } = await fetchByIdentifier({
+      Model: Order,
+      identifier,
+      select: '_id',
+      sortField: 'fecha',
+      lean: false,
+      customIdField: 'id'
+    });
+
+    if (error) return res.status(400).json({ error });
+    if (!doc) return res.status(404).json({ error: 'Order not found' });
+
+    await Order.findByIdAndDelete(doc._id);
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Public order delete-by-id failed:', err);
     res.status(500).json({ error: 'Server error' });
   }
 });
