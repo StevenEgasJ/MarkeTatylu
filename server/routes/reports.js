@@ -1,6 +1,7 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const router = express.Router();
+const { authMiddleware } = require('../middleware/auth');
 
 const Order = require('../models/Order');
 const Product = require('../models/Product');
@@ -250,7 +251,7 @@ async function findProductByIdentifier(identifier, session = null) {
 // Body: { userId?, products?, shipping?, payment?, save?, notas? }
 // ─────────────────────────────────────────────────────────────────────────────
 
-router.post('/', async (req, res) => {
+router.post('/', authMiddleware, async (req, res) => {
   let session = null;
   try {
     const body = req.body || {};
@@ -467,7 +468,7 @@ router.post('/', async (req, res) => {
 // Query params: ?latest=true | ?from=ISO&to=ISO | ?limit=N
 // ─────────────────────────────────────────────────────────────────────────────
 
-router.get('/', async (req, res) => {
+router.get('/', authMiddleware, async (req, res) => {
   try {
     const { latest, from, to, limit } = req.query;
 
@@ -514,7 +515,7 @@ async function findReportByIdentifier(identifier) {
 // Returns a specific saved report by _id or numeric id.
 // ─────────────────────────────────────────────────────────────────────────────
 
-router.get('/:id', async (req, res) => {
+router.get('/:id', authMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
     const report = await findReportByIdentifier(id);
@@ -531,7 +532,7 @@ router.get('/:id', async (req, res) => {
 // Updates a specific saved report by _id or numeric id.
 // ─────────────────────────────────────────────────────────────────────────────
 
-router.put('/:id', async (req, res) => {
+router.put('/:id', authMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
     const report = await findReportByIdentifier(id);
@@ -565,7 +566,7 @@ router.put('/:id', async (req, res) => {
 // Deletes a specific saved report by _id or numeric id.
 // ─────────────────────────────────────────────────────────────────────────────
 
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', authMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
     const report = await findReportByIdentifier(id);

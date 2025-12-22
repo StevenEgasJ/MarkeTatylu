@@ -5,7 +5,7 @@ const Product = require('../models/Product');
 const User = require('../models/User');
 const Order = require('../models/Order');
 const bcrypt = require('bcryptjs');
-const authMiddleware = require('../middleware/auth');
+const { authMiddleware } = require('../middleware/auth');
 const jwt = require('jsonwebtoken');
 const { sendMail } = require('../utils/email');
 

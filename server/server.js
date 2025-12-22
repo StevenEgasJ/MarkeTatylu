@@ -4,6 +4,7 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const path = require('path');
 
+
 const productsRouter = require('./routes/products');
 const authRouter = require('./routes/auth');
 const cartRouter = require('./routes/cart');
@@ -83,6 +84,7 @@ app.use('/api/reviews', reviewsRouter);
 app.use('/api/categories', categoriesRouter);
 app.use('/api/suppliers', suppliersRouter);
 app.use('/reports', reportsRouter);
+
 
 // Debug routes (only enabled when DEBUG_API=true in env)
 app.use('/api/debug', debugRouter);

@@ -52,8 +52,7 @@ app.use(
 app.use(passport.initialize());
 app.use(passport.session());
 
-// Serve static files if needed
-app.use(express.static('public'));
+
 
 // Routes - Montar directamente en la raíz
 const publicRoutes = require('./routes/public');

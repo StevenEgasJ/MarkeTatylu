@@ -5,6 +5,7 @@ const Product = require('../models/Product');
 const User = require('../models/User');
 const Order = require('../models/Order');
 const { sendMail } = require('../utils/email');
+const { authMiddleware } = require('../middleware/auth');
 
 const DEFAULT_TAX_RATE = 0.15;
 const DEFAULT_CURRENCY = 'USD';
@@ -287,7 +288,7 @@ function renderInvoiceHtml(order) {
 </html>`;
 }
 
-router.post('/', async (req, res) => {
+router.post('/', authMiddleware, async (req, res) => {
   let session = null;
   try {
     const body = req.body || {};
@@ -534,7 +535,7 @@ router.post('/', async (req, res) => {
   }
 });
 
-router.get('/:id', async (req, res) => {
+router.get('/:id', authMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
     if (!mongoose.Types.ObjectId.isValid(id)) {

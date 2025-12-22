@@ -1,9 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const Product = require('../models/Product');
+const { authMiddleware } = require('../middleware/auth');
 
 // GET /api/products - list products
-router.get('/', async (req, res) => {
+router.get('/', authMiddleware, async (req, res) => {
   try {
     const products = await Product.find().sort({ fechaCreacion: -1 });
     res.json(products);
@@ -14,7 +15,7 @@ router.get('/', async (req, res) => {
 });
 
 // GET /api/products/:id
-router.get('/:id', async (req, res) => {
+router.get('/:id', authMiddleware, async (req, res) => {
   try {
     const product = await Product.findById(req.params.id);
     if (!product) return res.status(404).json({ error: 'Product not found' });
@@ -25,8 +26,8 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// POST /api/products - create (basic, no auth for scaffold)
-router.post('/', async (req, res) => {
+// POST /api/products - create (requires auth)
+router.post('/', authMiddleware, async (req, res) => {
   try {
     const p = new Product(req.body);
     const saved = await p.save();
@@ -38,7 +39,7 @@ router.post('/', async (req, res) => {
 });
 
 // PUT /api/products/:id - update product
-router.put('/:id', async (req, res) => {
+router.put('/:id', authMiddleware, async (req, res) => {
   try {
     const update = { ...req.body, fechaModificacion: new Date() };
     const updated = await Product.findByIdAndUpdate(req.params.id, update, { new: true, runValidators: true });
@@ -51,7 +52,7 @@ router.put('/:id', async (req, res) => {
 });
 
 // DELETE /api/products/:id - delete product
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', authMiddleware, async (req, res) => {
   try {
     const deleted = await Product.findByIdAndDelete(req.params.id);
     if (!deleted) return res.status(404).json({ error: 'Product not found' });

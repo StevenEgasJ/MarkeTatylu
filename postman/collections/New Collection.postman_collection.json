@@ -64,6 +64,18 @@
         }
       },
       "response": []
+    },
+    {
+      "name": "New Request",
+      "id": "d0274bcf-898b-4704-95f6-595404d87963",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": ""
+        }
+      },
+      "response": []
     }
   ]
 }

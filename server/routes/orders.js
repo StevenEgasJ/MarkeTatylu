@@ -1,9 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const Order = require('../models/Order');
+const { authMiddleware } = require('../middleware/auth');
 
 // GET /api/orders - list recent orders (admin)
-router.get('/', async (req, res) => {
+router.get('/', authMiddleware, async (req, res) => {
   try {
     const orders = await Order.find().sort({ fecha: -1 }).limit(200).lean();
     res.json(orders);
@@ -14,7 +15,7 @@ router.get('/', async (req, res) => {
 });
 
 // GET /api/orders/:id
-router.get('/:id', async (req, res) => {
+router.get('/:id', authMiddleware, async (req, res) => {
   try {
     const order = await Order.findById(req.params.id).lean();
     if (!order) return res.status(404).json({ error: 'Order not found' });
@@ -26,7 +27,7 @@ router.get('/:id', async (req, res) => {
 });
 
 // PUT /api/orders/:id - update order (e.g., change status)
-router.put('/:id', async (req, res) => {
+router.put('/:id', authMiddleware, async (req, res) => {
   try {
     const update = req.body || {};
     update.fechaModificacion = new Date();
@@ -40,7 +41,7 @@ router.put('/:id', async (req, res) => {
 });
 
 // DELETE /api/orders/:id
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', authMiddleware, async (req, res) => {
   try {
     const deleted = await Order.findByIdAndDelete(req.params.id);
     if (!deleted) return res.status(404).json({ error: 'Order not found' });

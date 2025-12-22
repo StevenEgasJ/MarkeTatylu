@@ -1,10 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
-const auth = require('../middleware/auth');
+const {authMiddleware } = require('../middleware/auth');
 
 // GET /api/users/me - return current authenticated user (no passwordHash)
-router.get('/me', auth, async (req, res) => {
+router.get('/me', authMiddleware, async (req, res) => {
   try {
     const userId = req.user && req.user.id;
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
@@ -18,7 +18,7 @@ router.get('/me', auth, async (req, res) => {
 });
 
 // PUT /api/users/me - update allowed profile fields for the authenticated user
-router.put('/me', auth, async (req, res) => {
+router.put('/me', authMiddleware, async (req, res) => {
   try {
     const userId = req.user && req.user.id;
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
