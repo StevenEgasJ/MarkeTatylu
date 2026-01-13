@@ -8,7 +8,24 @@ class ProductManager {
         this.loadProductsSync(); // Cargar inmediatamente desde localStorage de forma síncrona
         this.loadProducts(); // Luego intentar actualizar desde servidor de forma asíncrona
     }
-
+    // Inicializar productos por defecto localmente (para visitas en file:// o cuando no hay API)
+    initializeDefaultProducts() {
+        try {
+            const defaultProducts = [
+                { id: 'local-1', nombre: 'Refrigeradora Samsung RF28T5001SR', precio: 1299.99, categoria: 'refrigeracion', stock: 15, imagen: './static/img/refrigeradora.png', descripcion: 'Refrigeradora de 28 pies cúbicos con tecnología Twin Cooling Plus' },
+                { id: 'local-2', nombre: 'Microondas LG MS2596OB', precio: 189.99, categoria: 'cocina', stock: 25, imagen: './static/img/microondas.png', descripcion: 'Microondas de 25 litros con grill y función auto-cook' },
+                { id: 'local-3', nombre: 'Licuadora Oster BLSTPB-WBL', precio: 89.99, categoria: 'pequenos', stock: 30, imagen: './static/img/licuadora.png', descripcion: 'Licuadora de 6 velocidades con jarra de vidrio' }
+            ];
+            // Normalize and persist
+            this.products = defaultProducts.map(p => ({ ...p, id: p.id, stock: Number(p.stock) || 0, precio: Number(p.precio) || 0 }));
+            localStorage.setItem('productos', JSON.stringify(this.products));
+            console.log('🔧 Productos por defecto inicializados en localStorage:', this.products.length);
+            return this.products;
+        } catch (err) {
+            console.error('Error inicializando productos por defecto:', err);
+            return [];
+        }
+    }
     // Cargar productos de forma síncrona desde localStorage (para inicialización inmediata)
     loadProductsSync() {
         try {

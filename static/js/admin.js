@@ -61,26 +61,16 @@ class AdminPanelManager {
     async loadServerData() {
         // Products
         try {
-            const res = await fetch('/api/products');
-            if (res.ok) {
-                const products = await res.json();
-                // normalize shape expected by the admin UI
-                const adminProducts = products.map(p => ({
-                    id: p._id || p.id,
-                    nombre: p.nombre,
-                    precio: p.precio,
-                    categoria: p.categoria,
-                    stock: p.stock,
-                    descuento: p.descuento ?? p.desc ?? p.discount ?? 0,
-                    imagen: p.imagen,
-                    descripcion: p.descripcion,
-                    fechaCreacion: p.fechaCreacion || p.createdAt
-                }));
+            // Prefer the token-aware helper that already handles api client and fallbacks
+            const products = await this.fetchProducts();
+            if (products && products.length) {
                 // keep server data in-memory
-                this._productos = adminProducts;
+                this._productos = products;
                 // TAMBIÉN actualizar localStorage para que el frontend pueda acceder
-                localStorage.setItem('productos', JSON.stringify(adminProducts));
-                console.log('Admin: productos cargados desde server y guardados en localStorage:', adminProducts.length);
+                localStorage.setItem('productos', JSON.stringify(products));
+                console.log('Admin: productos cargados desde server y guardados en localStorage:', products.length);
+            } else {
+                console.log('Admin: no se recibieron productos desde el server');
             }
         } catch (err) {
             console.warn('No se pudo cargar productos desde server:', err);
@@ -88,24 +78,11 @@ class AdminPanelManager {
 
         // Orders
         try {
-            const res = await fetch('/api/orders');
-            if (res.ok) {
-                const orders = await res.json();
-                // Map orders to admin local shape (compatible with existing UI)
-                const adminOrders = orders.map(o => ({
-                    id: o._id || o.id,
-                    numeroOrden: o._id || o.numeroOrden,
-                    userId: o.userId || o.user || o.usuario || o.user_id,
-                    cliente: o.resumen?.cliente || o.cliente || {},
-                    // accept multiple shapes for products: items, productos or nested resumen.productos
-                    productos: o.items || o.productos || o.resumen?.productos || [],
-                    totales: o.totales || o.resumen || o.totales || {},
-                    estado: o.estado || o.state || 'pendiente',
-                    fecha: o.fecha || o.createdAt || o.timestamp
-                }));
+            const orders = await this.fetchOrders();
+            if (orders && orders.length) {
                 // keep server data in-memory only (do NOT persist to localStorage)
-                this._pedidos = adminOrders;
-                console.log('Admin: pedidos cargados desde server (in-memory):', adminOrders.length);
+                this._pedidos = orders;
+                console.log('Admin: pedidos cargados desde server (in-memory):', orders.length);
 
                 // For orders missing cliente info but containing userId, try to populate cliente using the
                 // users cache. We wait for fetchUsers() to finish so we avoid firing many per-order
@@ -137,6 +114,8 @@ class AdminPanelManager {
                 } catch (e) {
                     console.warn('Could not populate order client info from users cache:', e);
                 }
+            } else {
+                console.log('Admin: no se recibieron pedidos desde el server');
             }
         } catch (err) {
             console.warn('No se pudo cargar pedidos desde server:', err);
