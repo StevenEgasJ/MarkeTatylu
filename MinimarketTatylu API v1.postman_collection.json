@@ -41,7 +41,8 @@
               ]
             },
             "description": "Registra un nuevo usuario en el sistema. Requiere email único, contraseña segura y datos personales."
-          }
+          },
+          "response": []
         },
         {
           "name": "Login",
@@ -75,7 +76,8 @@
               ]
             },
             "description": "Inicia sesión y obtiene un token JWT. Guarda el token en la variable authToken para usar en endpoints protegidos."
-          }
+          },
+          "response": []
         },
         {
           "name": "Verify Email",
@@ -109,7 +111,8 @@
               ]
             },
             "description": "Verifica el email del usuario usando el token enviado por correo electrónico."
-          }
+          },
+          "response": []
         },
         {
           "name": "Request Password Reset",
@@ -143,7 +146,8 @@
               ]
             },
             "description": "Solicita un restablecimiento de contraseña. Envía un token al email del usuario."
-          }
+          },
+          "response": []
         },
         {
           "name": "Reset Password",
@@ -177,7 +181,8 @@
               ]
             },
             "description": "Restablece la contraseña usando el token recibido por email."
-          }
+          },
+          "response": []
         },
         {
           "name": "Logout",
@@ -202,7 +207,8 @@
               ]
             },
             "description": "Cierra la sesión del usuario. Requiere autenticación JWT."
-          }
+          },
+          "response": []
         }
       ],
       "id": "57930935-78cf-4354-afca-03b7c51584ab"
@@ -215,6 +221,7 @@
           "id": "68af90d4-4d71-40ea-948c-c4a5640d653c",
           "request": {
             "method": "GET",
+            "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/products?page=1&limit=20&search=&category=&minPrice=&maxPrice=&sortBy=createdAt",
               "host": [
@@ -256,13 +263,15 @@
               ]
             },
             "description": "Obtiene lista de productos con paginación y filtros. Soporta búsqueda, filtrado por categoría, rango de precios y ordenamiento."
-          }
+          },
+          "response": []
         },
         {
           "name": "Get Product by ID",
           "id": "294ff5b5-1327-4676-b9eb-df25edc5117c",
           "request": {
             "method": "GET",
+            "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/products/69266585bc0ead7f3bf1bb8d",
               "host": [
@@ -275,7 +284,8 @@
               ]
             },
             "description": "Obtiene los detalles completos de un producto específico por su ID."
-          }
+          },
+          "response": []
         },
         {
           "name": "Create Product",
@@ -307,7 +317,8 @@
               ]
             },
             "description": "Crea un nuevo producto. Requiere autenticación de administrador."
-          }
+          },
+          "response": []
         },
         {
           "name": "Update Product",
@@ -350,7 +361,8 @@
               ]
             },
             "description": "Actualiza parcialmente un producto existente. Requiere autenticación de administrador."
-          }
+          },
+          "response": []
         },
         {
           "name": "Delete Product",
@@ -380,13 +392,15 @@
               ]
             },
             "description": "Elimina un producto del sistema. Requiere autenticación de administrador."
-          }
+          },
+          "response": []
         },
         {
           "name": "Get Top Selling Products",
           "id": "2a6905b2-e20e-4b06-8809-d1f26cbae169",
           "request": {
             "method": "GET",
+            "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/products/top-selling?limit=10",
               "host": [
@@ -405,13 +419,15 @@
               ]
             },
             "description": "Obtiene los productos más vendidos. Útil para mostrar en página principal."
-          }
+          },
+          "response": []
         },
         {
           "name": "Search Products",
           "id": "d3afe577-4736-4bf9-b386-2a05340c7a19",
           "request": {
             "method": "GET",
+            "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/products/search?q=coca&category=",
               "host": [
@@ -434,13 +450,15 @@
               ]
             },
             "description": "Búsqueda avanzada de productos por término y categoría opcional."
-          }
+          },
+          "response": []
         },
         {
           "name": "Get Product Price History",
           "id": "434fba42-484c-4817-b292-ba3961d37471",
           "request": {
             "method": "GET",
+            "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/products/:id/price-history",
               "host": [
@@ -459,7 +477,8 @@
               ]
             },
             "description": "Obtiene el historial de cambios de precio de un producto."
-          }
+          },
+          "response": []
         }
       ],
       "id": "9e63ce93-13c3-4430-8e38-c0114228d6d5"
@@ -472,6 +491,7 @@
           "id": "278f13cf-4b8a-47ef-98c5-3f169c4f36bb",
           "request": {
             "method": "GET",
+            "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/categories",
               "host": [
@@ -483,13 +503,15 @@
               ]
             },
             "description": "Obtiene todas las categorías disponibles en el sistema."
-          }
+          },
+          "response": []
         },
         {
           "name": "Get Category by ID",
           "id": "27b300a4-ea1d-4b3d-8342-0abb328bfdee",
           "request": {
             "method": "GET",
+            "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/categories/:id",
               "host": [
@@ -507,13 +529,15 @@
               ]
             },
             "description": "Obtiene los detalles de una categoría específica."
-          }
+          },
+          "response": []
         },
         {
           "name": "Get Products by Category",
           "id": "49b1ae30-b9e5-4ada-bc9f-a53e1f055d18",
           "request": {
             "method": "GET",
+            "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/categories/:id/products?page=1&limit=20",
               "host": [
@@ -542,7 +566,8 @@
               ]
             },
             "description": "Obtiene todos los productos de una categoría específica con paginación."
-          }
+          },
+          "response": []
         },
         {
           "name": "Create Category",
@@ -574,7 +599,8 @@
               ]
             },
             "description": "Crea una nueva categoría. Requiere autenticación de administrador."
-          }
+          },
+          "response": []
         },
         {
           "name": "Update Category",
@@ -612,7 +638,8 @@
               ]
             },
             "description": "Actualiza una categoría existente. Requiere autenticación de administrador."
-          }
+          },
+          "response": []
         },
         {
           "name": "Delete Category",
@@ -642,7 +669,8 @@
               ]
             },
             "description": "Elimina una categoría del sistema. Requiere autenticación de administrador."
-          }
+          },
+          "response": []
         }
       ],
       "id": "3885d4b6-1594-4df5-932c-b72013516354"
@@ -672,7 +700,8 @@
               ]
             },
             "description": "Obtiene el carrito de compras del usuario autenticado. Requiere autenticación."
-          }
+          },
+          "response": []
         },
         {
           "name": "Add Item to Cart",
@@ -710,7 +739,8 @@
               ]
             },
             "description": "Agrega un producto al carrito. Requiere autenticación de usuario."
-          }
+          },
+          "response": []
         },
         {
           "name": "Update Cart Item",
@@ -749,7 +779,8 @@
               ]
             },
             "description": "Actualiza la cantidad de un producto en el carrito. Requiere autenticación de usuario."
-          }
+          },
+          "response": []
         },
         {
           "name": "Remove Item from Cart",
@@ -780,7 +811,8 @@
               ]
             },
             "description": "Elimina un producto del carrito. Requiere autenticación de usuario."
-          }
+          },
+          "response": []
         },
         {
           "name": "Clear Cart",
@@ -804,7 +836,8 @@
               ]
             },
             "description": "Vacía completamente el carrito de compras. Requiere autenticación de usuario."
-          }
+          },
+          "response": []
         }
       ],
       "id": "e1da8356-dbed-4bb7-bc34-453d5a3261fd"
@@ -842,7 +875,8 @@
               ]
             },
             "description": "Procesa el checkout y crea una orden. Requiere autenticación de usuario."
-          }
+          },
+          "response": []
         },
         {
           "name": "Get Checkout Summary",
@@ -867,7 +901,8 @@
               ]
             },
             "description": "Obtiene el resumen del checkout antes de confirmar. Requiere autenticación de usuario."
-          }
+          },
+          "response": []
         },
         {
           "name": "Get My Orders",
@@ -891,7 +926,8 @@
               ]
             },
             "description": "Obtiene todas las órdenes del usuario autenticado. Requiere autenticación de usuario."
-          }
+          },
+          "response": []
         },
         {
           "name": "Get Order by ID",
@@ -921,7 +957,8 @@
               ]
             },
             "description": "Obtiene los detalles de una orden específica. Requiere autenticación de usuario."
-          }
+          },
+          "response": []
         },
         {
           "name": "Cancel Order",
@@ -952,7 +989,8 @@
               ]
             },
             "description": "Cancela una orden pendiente. Requiere autenticación de usuario."
-          }
+          },
+          "response": []
         },
         {
           "name": "Update Order Status",
@@ -991,7 +1029,8 @@
               ]
             },
             "description": "Actualiza el estado de una orden. Requiere autenticación de administrador."
-          }
+          },
+          "response": []
         }
       ],
       "id": "00197f07-ddc5-408f-a315-c28f4078bf42"
@@ -1004,6 +1043,7 @@
           "id": "0f4286a1-2c25-4f5b-ac7b-46328ad73f39",
           "request": {
             "method": "GET",
+            "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/products/:productId/reviews",
               "host": [
@@ -1022,7 +1062,8 @@
               ]
             },
             "description": "Obtiene todas las reviews de un producto específico."
-          }
+          },
+          "response": []
         },
         {
           "name": "Create Review",
@@ -1061,7 +1102,8 @@
               ]
             },
             "description": "Crea una review para un producto. Requiere autenticación de usuario."
-          }
+          },
+          "response": []
         },
         {
           "name": "Update Review",
@@ -1099,7 +1141,8 @@
               ]
             },
             "description": "Actualiza una review existente. Requiere autenticación de usuario propietario."
-          }
+          },
+          "response": []
         },
         {
           "name": "Delete Review",
@@ -1129,7 +1172,8 @@
               ]
             },
             "description": "Elimina una review. Requiere autenticación de usuario propietario."
-          }
+          },
+          "response": []
         },
         {
           "name": "Approve Review",
@@ -1160,7 +1204,8 @@
               ]
             },
             "description": "Aprueba una review pendiente. Requiere autenticación de administrador."
-          }
+          },
+          "response": []
         },
         {
           "name": "Reject Review",
@@ -1191,7 +1236,8 @@
               ]
             },
             "description": "Rechaza una review inapropiada. Requiere autenticación de administrador."
-          }
+          },
+          "response": []
         }
       ],
       "id": "55f4aeeb-d737-4852-a249-b7df879c9ca9"
@@ -1222,7 +1268,8 @@
               ]
             },
             "description": "Obtiene el perfil del usuario autenticado. Requiere autenticación."
-          }
+          },
+          "response": []
         },
         {
           "name": "Update My Profile",
@@ -1255,7 +1302,8 @@
               ]
             },
             "description": "Actualiza el perfil del usuario autenticado. Requiere autenticación."
-          }
+          },
+          "response": []
         },
         {
           "name": "Delete My Account",
@@ -1280,7 +1328,8 @@
               ]
             },
             "description": "Elimina la cuenta del usuario autenticado. Requiere autenticación."
-          }
+          },
+          "response": []
         },
         {
           "name": "Get My Loyalty Points",
@@ -1306,7 +1355,8 @@
               ]
             },
             "description": "Obtiene los puntos de lealtad del usuario. Requiere autenticación."
-          }
+          },
+          "response": []
         },
         {
           "name": "Get All Users",
@@ -1330,7 +1380,8 @@
               ]
             },
             "description": "Obtiene lista de todos los usuarios. Requiere autenticación de administrador."
-          }
+          },
+          "response": []
         },
         {
           "name": "Get User by ID",
@@ -1360,7 +1411,8 @@
               ]
             },
             "description": "Obtiene los detalles de un usuario específico. Requiere autenticación de administrador."
-          }
+          },
+          "response": []
         },
         {
           "name": "Update User",
@@ -1398,7 +1450,8 @@
               ]
             },
             "description": "Actualiza un usuario. Requiere autenticación de administrador."
-          }
+          },
+          "response": []
         },
         {
           "name": "Delete User",
@@ -1428,7 +1481,8 @@
               ]
             },
             "description": "Elimina un usuario del sistema. Requiere autenticación de administrador."
-          }
+          },
+          "response": []
         }
       ],
       "id": "64f86aa4-ea30-40a1-bd12-88513e60981f"
@@ -1467,7 +1521,8 @@
               ]
             },
             "description": "Crea un nuevo usuario administrador. Requiere autenticación de super-administrador."
-          }
+          },
+          "response": []
         },
         {
           "name": "Send Promotions",
@@ -1500,7 +1555,8 @@
               ]
             },
             "description": "Envía promociones por email a usuarios. Requiere autenticación de administrador."
-          }
+          },
+          "response": []
         },
         {
           "name": "Get Dashboard Stats",
@@ -1526,7 +1582,8 @@
               ]
             },
             "description": "Obtiene estadísticas del dashboard administrativo. Requiere autenticación de administrador."
-          }
+          },
+          "response": []
         },
         {
           "name": "Get System Health",
@@ -1552,7 +1609,8 @@
               ]
             },
             "description": "Verifica el estado de salud del sistema y base de datos. Requiere autenticación de administrador."
-          }
+          },
+          "response": []
         },
         {
           "name": "Adjust Product Stock",
@@ -1592,7 +1650,8 @@
               ]
             },
             "description": "Ajusta el stock de un producto. Requiere autenticación de administrador."
-          }
+          },
+          "response": []
         }
       ],
       "id": "16a73e7b-11e5-4be0-8419-5c9dcdf57686"
@@ -1634,7 +1693,8 @@
               ]
             },
             "description": "Genera reporte de ventas por período. Requiere autenticación de administrador."
-          }
+          },
+          "response": []
         },
         {
           "name": "Get Inventory Report",
@@ -1660,7 +1720,8 @@
               ]
             },
             "description": "Genera reporte de inventario actual. Requiere autenticación de administrador."
-          }
+          },
+          "response": []
         },
         {
           "name": "Get Users Report",
@@ -1686,7 +1747,8 @@
               ]
             },
             "description": "Genera reporte de usuarios registrados. Requiere autenticación de administrador."
-          }
+          },
+          "response": []
         },
         {
           "name": "Get Revenue Report",
@@ -1712,7 +1774,8 @@
               ]
             },
             "description": "Genera reporte de ingresos y ganancias. Requiere autenticación de administrador."
-          }
+          },
+          "response": []
         }
       ],
       "id": "2784164b-eac9-4a3c-9dcf-b8cdf01707da"
@@ -1742,7 +1805,8 @@
               ]
             },
             "description": "Obtiene todas las compras a proveedores. Requiere autenticación de administrador."
-          }
+          },
+          "response": []
         },
         {
           "name": "Get Purchase by ID",
@@ -1772,7 +1836,8 @@
               ]
             },
             "description": "Obtiene los detalles de una compra específica. Requiere autenticación de administrador."
-          }
+          },
+          "response": []
         },
         {
           "name": "Create Purchase",
@@ -1804,7 +1869,8 @@
               ]
             },
             "description": "Registra una nueva compra a proveedor. Requiere autenticación de administrador."
-          }
+          },
+          "response": []
         },
         {
           "name": "Update Purchase Status",
@@ -1843,10 +1909,23 @@
               ]
             },
             "description": "Actualiza el estado de una compra. Requiere autenticación de administrador."
-          }
+          },
+          "response": []
         }
       ],
       "id": "211f0b24-8a26-40f5-aab7-3a04e9556f98"
+    },
+    {
+      "name": "New Request",
+      "id": "a07aff39-c5a4-4c81-abdd-13ce422ee92c",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": ""
+        }
+      },
+      "response": []
     }
   ],
   "variable": [

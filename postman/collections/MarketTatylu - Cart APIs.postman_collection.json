@@ -1,0 +1,458 @@
+{
+  "info": {
+    "_postman_id": "92cdf815-3983-4760-b323-1a649dc6a3d9",
+    "name": "MarketTatylu - Cart APIs",
+    "description": "Collection for testing Cart microservice-style APIs",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Business Rules",
+      "item": [
+        {
+          "name": "Get Business Rules",
+          "id": "3a659d31-eca9-4324-8842-b1d1adb50f6d",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/cart/business-rules",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cart",
+                "business-rules"
+              ]
+            }
+          },
+          "response": []
+        }
+      ],
+      "id": "16240667-e278-4be1-9850-185577633f71"
+    },
+    {
+      "name": "Calculate",
+      "item": [
+        {
+          "name": "Calculate Cart Totals",
+          "id": "a272e96e-1773-4dd8-94d9-1b29db63c762",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"items\": [\n    {\n      \"productId\": \"{{productId}}\",\n      \"cantidad\": 2\n    }\n  ],\n  \"applyBulkDiscount\": true,\n  \"applyLoyaltyDiscount\": false\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/cart/calculate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cart",
+                "calculate"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Calculate with Multiple Items",
+          "id": "2f2d6148-0a49-428f-a761-360b83c0d7f2",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"items\": [\n    {\n      \"productId\": \"{{productId}}\",\n      \"cantidad\": 5\n    },\n    {\n      \"nombre\": \"Producto Manual\",\n      \"precio\": 15000,\n      \"cantidad\": 3,\n      \"descuento\": 10\n    }\n  ],\n  \"applyBulkDiscount\": true,\n  \"applyLoyaltyDiscount\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/cart/calculate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cart",
+                "calculate"
+              ]
+            }
+          },
+          "response": []
+        }
+      ],
+      "id": "8fad5d0d-3473-40ef-a289-dc95c20037ce"
+    },
+    {
+      "name": "Validate",
+      "item": [
+        {
+          "name": "Validate Cart Items",
+          "id": "78c86b38-34f3-4e51-8058-b9a5bd3d9c59",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"items\": [\n    {\n      \"productId\": \"{{productId}}\",\n      \"cantidad\": 2\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/cart/validate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cart",
+                "validate"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Validate - Exceeding Stock",
+          "id": "0af25536-8ffb-47c9-9597-502baf6a7df1",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"items\": [\n    {\n      \"productId\": \"{{productId}}\",\n      \"cantidad\": 9999\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/cart/validate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cart",
+                "validate"
+              ]
+            }
+          },
+          "response": []
+        }
+      ],
+      "id": "d9dba619-2f88-4d82-9b7d-5a63b362c91e"
+    },
+    {
+      "name": "Promotions",
+      "item": [
+        {
+          "name": "Apply Promo - WELCOME10",
+          "id": "fdb20bb3-9fc8-40a0-8fd6-ff021e8ac81f",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"items\": [\n    {\n      \"productId\": \"{{productId}}\",\n      \"cantidad\": 3\n    }\n  ],\n  \"promoCode\": \"WELCOME10\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/cart/apply-promotions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cart",
+                "apply-promotions"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Apply Promo - SAVE20",
+          "id": "c6d8ae73-ee59-4608-ac27-3950c3fe7452",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"items\": [\n    {\n      \"productId\": \"{{productId}}\",\n      \"cantidad\": 2\n    }\n  ],\n  \"promoCode\": \"SAVE20\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/cart/apply-promotions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cart",
+                "apply-promotions"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Apply Promo - FLAT5000",
+          "id": "a6159169-dda4-4099-9e7b-27a730a8ee9a",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"items\": [\n    {\n      \"productId\": \"{{productId}}\",\n      \"cantidad\": 5\n    }\n  ],\n  \"promoCode\": \"FLAT5000\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/cart/apply-promotions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cart",
+                "apply-promotions"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Apply Promo - FREESHIP",
+          "id": "d8e94226-8240-4c66-9a4d-07b064765df7",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"items\": [\n    {\n      \"productId\": \"{{productId}}\",\n      \"cantidad\": 1\n    }\n  ],\n  \"promoCode\": \"FREESHIP\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/cart/apply-promotions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cart",
+                "apply-promotions"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Apply Invalid Promo",
+          "id": "64aff510-43af-4bb2-9342-d8b603e5feb1",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"items\": [\n    {\n      \"productId\": \"{{productId}}\",\n      \"cantidad\": 1\n    }\n  ],\n  \"promoCode\": \"INVALID123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/cart/apply-promotions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cart",
+                "apply-promotions"
+              ]
+            }
+          },
+          "response": []
+        }
+      ],
+      "id": "ce85e004-4376-4d2a-b7a8-6434a0864fa8"
+    },
+    {
+      "name": "User Cart",
+      "item": [
+        {
+          "name": "Get Cart Summary",
+          "id": "4ed8dc8b-a36c-4f75-bfc0-67c82b4f2c08",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/cart/summary/{{userId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cart",
+                "summary",
+                "{{userId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Quick Add to Cart",
+          "id": "aa689e3d-9177-430f-aea2-4f3f2e7540c3",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"{{userId}}\",\n  \"productId\": \"{{productId}}\",\n  \"cantidad\": 1\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/cart/quick-add",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cart",
+                "quick-add"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Clear Cart",
+          "id": "e0012e05-9a54-41aa-9062-a203dec836c8",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/cart/clear/{{userId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cart",
+                "clear",
+                "{{userId}}"
+              ]
+            }
+          },
+          "response": []
+        }
+      ],
+      "id": "838df2b5-437a-41de-bd51-794fa7d875d5"
+    },
+    {
+      "name": "Microservice Checkout",
+      "item": [
+        {
+          "name": "Full Checkout Flow",
+          "id": "a7148ec2-b62e-4678-8bcb-e174da1a463c",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"{{userId}}\",\n  \"items\": [\n    {\n      \"productId\": \"{{productId}}\",\n      \"cantidad\": 3\n    }\n  ],\n  \"promoCode\": \"WELCOME10\",\n  \"applyLoyaltyDiscount\": false,\n  \"applyBulkDiscount\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/cart/microservice-checkout",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cart",
+                "microservice-checkout"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Checkout with Multiple Items",
+          "id": "4461f753-cd27-4950-8b3b-b8cabcb393fd",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"{{userId}}\",\n  \"items\": [\n    {\n      \"productId\": \"{{productId}}\",\n      \"cantidad\": 5\n    },\n    {\n      \"nombre\": \"Producto Extra\",\n      \"precio\": 25000,\n      \"cantidad\": 2\n    }\n  ],\n  \"promoCode\": \"SAVE20\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/cart/microservice-checkout",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cart",
+                "microservice-checkout"
+              ]
+            }
+          },
+          "response": []
+        }
+      ],
+      "id": "c38f3856-ed92-4152-91eb-5f5cb572dcf3"
+    }
+  ],
+  "variable": [
+    {
+      "id": "95a9bae1-1d75-4957-9183-c957f556819c",
+      "key": "baseUrl",
+      "value": "http://localhost:4000/api"
+    },
+    {
+      "id": "8949e3f4-2ad2-4779-80e4-f9cd90fe7159",
+      "key": "userId",
+      "value": "YOUR_USER_ID_HERE"
+    },
+    {
+      "id": "f0bdb0a6-f304-4f4e-a09b-32efebe74789",
+      "key": "productId",
+      "value": "YOUR_PRODUCT_ID_HERE"
+    }
+  ]
+}
