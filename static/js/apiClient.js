@@ -29,8 +29,18 @@
     const token = getToken();
     if (token) headers['Authorization'] = `Bearer ${token}`;
 
+    // Instrumentation: measure request duration
+    const reqKey = `${path}@${Date.now()}`;
+    try { if (window.rail && window.rail.metrics && window.rail.metrics.markRequestStart) window.rail.metrics.markRequestStart(reqKey); } catch(e){}
+
     // Make initial request
-    let res = await fetch(API_PREFIX + path, { ...options, headers });
+    let res;
+    try {
+      res = await fetch(API_PREFIX + path, { ...options, headers });
+    } catch (networkErr) {
+      try { if (window.rail && window.rail.metrics && window.rail.metrics.markRequestEnd) window.rail.metrics.markRequestEnd(reqKey, { error: networkErr.message }); } catch(e){}
+      throw networkErr;
+    }
 
     // If the server rejects due to invalid token, clear saved token and retry once without Authorization
     if (!res.ok && res.status === 401 && token) {
@@ -46,12 +56,15 @@
       // retry request without Authorization header
       const retry = await fetch(API_PREFIX + path, { ...options, headers: headersNoAuth });
       if (retry.ok) {
+        try { if (window.rail && window.rail.metrics && window.rail.metrics.markRequestEnd) window.rail.metrics.markRequestEnd(reqKey, { status: retry.status }); } catch(e){}
         const ct = retry.headers.get('content-type') || '';
         return ct.includes('application/json') ? retry.json() : retry.text();
       }
       // swap res to retry so below code throws appropriate error
       res = retry;
     }
+
+    try { if (window.rail && window.rail.metrics && window.rail.metrics.markRequestEnd) window.rail.metrics.markRequestEnd(reqKey, { status: res.status }); } catch(e){}
 
     if (!res.ok) {
       const text = await res.text().catch(()=>null);

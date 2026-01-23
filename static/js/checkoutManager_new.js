@@ -1,252 +1,45 @@
 // =================== SISTEMA MEJORADO DE GEOLOCALIZACIÓN ===================
 
+// Expose stubs early to avoid ReferenceErrors when other page scripts run before this file finishes parsing
+try {
+    if (!window.getLocationForCheckout) window.getLocationForCheckout = async function(){ console.warn('getLocationForCheckout stub called before implementation'); return null; };
+    if (!window.generateOrder) window.generateOrder = function(){ console.warn('generateOrder stub called before implementation'); return {}; };
+} catch(e) { /* ignore */ }
+
 // Función para obtener ubicación del usuario (VERSION MEJORADA)
 async function getLocationForCheckout() {
     try {
-        console.log('🔍 Iniciando obtención de ubicación...');
-        
-        // Verificar si hay ubicación guardada
         const savedLocation = localStorage.getItem('userLocation');
-        let currentLocation = null;
-        
         if (savedLocation) {
-            try {
-                currentLocation = JSON.parse(savedLocation);
-                console.log('💾 Ubicación guardada encontrada:', currentLocation);
-            } catch (error) {
-                console.error('❌ Error parsing ubicación guardada:', error);
-                localStorage.removeItem('userLocation');
-            }
+            try { return JSON.parse(savedLocation); } catch(e) { /* ignore parse errors */ }
         }
-        
-        if (currentLocation && currentLocation.address) {
-            // Mostrar confirmación con mapa
-            const confirmed = await showLocationMapConfirmation(currentLocation);
-            if (confirmed === 'use_current') {
-                const locationData = {
-                    method: 'gps',
-                    latitude: currentLocation.latitude,
-                    longitude: currentLocation.longitude,
-                    accuracy: currentLocation.accuracy,
-                    address: {
-                        full: currentLocation.address,
-                        city: currentLocation.address.split(',')[0]?.trim() || 'Ciudad',
-                        province: currentLocation.address.split(',')[1]?.trim() || 'Provincia',
-                        country: 'Ecuador'
-                    },
-                    timestamp: currentLocation.timestamp || new Date().toISOString()
-                };
-                
-                localStorage.setItem('userLocation', JSON.stringify(currentLocation));
-                return locationData;
-            } else if (confirmed === 'change_location') {
-                const newLocation = await getNewLocationData();
-                if (newLocation && newLocation.method === 'gps') {
-                    localStorage.setItem('userLocation', JSON.stringify({
-                        latitude: newLocation.latitude,
-                        longitude: newLocation.longitude,
-                        accuracy: newLocation.accuracy,
-                        address: newLocation.address.full,
-                        timestamp: newLocation.timestamp
-                    }));
-                }
-                return newLocation;
-            } else {
-                return null;
-            }
-        } else {
-            // No hay ubicación previa, solicitar nueva
-            const newLocation = await getNewLocationData();
-            if (newLocation && newLocation.method === 'gps') {
-                localStorage.setItem('userLocation', JSON.stringify({
-                    latitude: newLocation.latitude,
-                    longitude: newLocation.longitude,
-                    accuracy: newLocation.accuracy,
-                    address: newLocation.address.full,
-                    timestamp: newLocation.timestamp
-                }));
-            }
-            return newLocation;
+
+        const choice = await Swal.fire({
+            title: '¿Cómo quieres agregar tu dirección?',
+            text: 'Puedes usar tu ubicación actual o ingresarla manualmente.',
+            showDenyButton: true,
+            showCancelButton: true,
+            confirmButtonText: 'Usar ubicación GPS',
+            denyButtonText: 'Ingresar manual',
+            cancelButtonText: 'Cancelar',
+            confirmButtonColor: '#28a745',
+            denyButtonColor: '#17a2b8',
+            cancelButtonColor: '#6c757d'
+        });
+
+        if (choice.isConfirmed) {
+            return await getCurrentLocationData();
         }
-    } catch (error) {
-        console.error('💥 Error en getLocationForCheckout:', error);
+
+        if (choice.isDenied) {
+            return await getManualLocationData();
+        }
+
         return null;
-    }
-}
-
-// Función para mostrar confirmación de ubicación con mapa
-async function showLocationMapConfirmation(currentLocation) {
-    // If there is an inline container on the page, prefer rendering the map inline
-    try {
-        const inlineContainer = document.getElementById('checkout-map');
-        if (inlineContainer) {
-            // Use a stable map id inside the inline container
-            const mapId = 'checkout-inline-map';
-            inlineContainer.innerHTML = `
-                <div class="w-100">
-                    <div class="alert alert-success mb-2">
-                        <i class="fa-solid fa-map-marker-alt me-2"></i>
-                        <strong>Ubicación conocida:</strong><br>
-                        ${currentLocation.address}
-                    </div>
-                    <div id="${mapId}" style="height: 300px; border-radius: 10px; border: 2px solid #007bff; background: #f8f9fa;"></div>
-                    <div class="mt-2 d-flex gap-2 justify-content-end">
-                        <button id="use-current-btn" class="btn btn-success btn-sm">Usar esta ubicación</button>
-                        <button id="change-location-btn" class="btn btn-outline-primary btn-sm">Cambiar ubicación</button>
-                        <button id="cancel-location-btn" class="btn btn-outline-secondary btn-sm">Cancelar</button>
-                    </div>
-                </div>
-            `;
-
-            // Ensure Leaflet is present, then init the map into the inline container
-            const loadLeafletAndInit = () => {
-                if (typeof L === 'undefined') {
-                    const link = document.createElement('link');
-                    link.rel = 'stylesheet';
-                    link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
-                    document.head.appendChild(link);
-
-                    const script = document.createElement('script');
-                    script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
-                    script.integrity = 'sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=';
-                    script.crossOrigin = '';
-                    script.onload = () => { setTimeout(() => initCheckoutLocationMap(mapId, currentLocation), 100); };
-                    script.onerror = () => { console.warn('Leaflet failed to load for inline map'); };
-                    document.head.appendChild(script);
-                } else {
-                    setTimeout(() => initCheckoutLocationMap(mapId, currentLocation), 100);
-                }
-            };
-
-            loadLeafletAndInit();
-
-            // Return a promise that resolves when user clicks one of the inline buttons
-            return await new Promise((resolve) => {
-                const useBtn = document.getElementById('use-current-btn');
-                const changeBtn = document.getElementById('change-location-btn');
-                const cancelBtn = document.getElementById('cancel-location-btn');
-
-                const cleanup = () => {
-                    useBtn?.removeEventListener('click', onUse);
-                    changeBtn?.removeEventListener('click', onChange);
-                    cancelBtn?.removeEventListener('click', onCancel);
-                };
-
-                const onUse = () => { cleanup(); resolve('use_current'); };
-                const onChange = () => { cleanup(); resolve('change_location'); };
-                const onCancel = () => { cleanup(); resolve(null); };
-
-                useBtn?.addEventListener('click', onUse);
-                changeBtn?.addEventListener('click', onChange);
-                cancelBtn?.addEventListener('click', onCancel);
-            });
-        }
-    } catch (inlineErr) {
-        console.warn('Inline location confirmation failed, falling back to modal', inlineErr);
-    }
-
-    // Fallback: show the modal (original behavior)
-    const mapId = 'checkout-location-map-' + Date.now();
-    
-    const { value: action } = await Swal.fire({
-        title: 'Ubicación de Entrega',
-        html: `
-            <div class="text-start">
-                <div class="alert alert-success mb-3">
-                    <i class="fa-solid fa-map-marker-alt me-2"></i>
-                    <strong>Ubicación conocida:</strong><br>
-                    ${currentLocation.address}
-                </div>
-                
-                <div class="mb-3">
-                    <h6 class="text-center mb-2">📍 Tu ubicación en el mapa</h6>
-                    <div id="${mapId}" style="height: 300px; border-radius: 10px; border: 2px solid #007bff; background: #f8f9fa;"></div>
-                </div>
-                
-                <div class="alert alert-info mt-3">
-                    <i class="fa-solid fa-truck me-2"></i>
-                    <strong>¿Esta es tu dirección de entrega?</strong><br>
-                    Si es correcta, continúa con la compra. Si no, puedes cambiarla.
-                </div>
-            </div>
-            
-            <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" 
-                  integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" 
-                  crossorigin=""/>
-        `,
-        showCancelButton: true,
-        showDenyButton: true,
-        confirmButtonText: '<i class="fa-solid fa-check me-2"></i>Usar esta ubicación',
-        denyButtonText: '<i class="fa-solid fa-edit me-2"></i>Cambiar ubicación',
-        cancelButtonText: '<i class="fa-solid fa-times me-2"></i>Cancelar compra',
-        confirmButtonColor: '#28a745',
-        denyButtonColor: '#17a2b8',
-        cancelButtonColor: '#dc3545',
-        width: '650px',
-        didOpen: () => {
-            if (typeof L === 'undefined') {
-                const script = document.createElement('script');
-                script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
-                script.integrity = 'sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=';
-                script.crossOrigin = '';
-                script.onload = () => {
-                    setTimeout(() => initCheckoutLocationMap(mapId, currentLocation), 100);
-                };
-                document.head.appendChild(script);
-            } else {
-                setTimeout(() => initCheckoutLocationMap(mapId, currentLocation), 100);
-            }
-        },
-        allowOutsideClick: false
-    });
-
-    if (action === true) return 'use_current';
-    if (action === false) return 'change_location';
-    return null;
-}
-
-// Función para obtener nueva ubicación
-async function getNewLocationData() {
-    const result = await Swal.fire({
-        title: 'Obtener Ubicación de Entrega',
-        html: `
-            <div class="text-start">
-                <p class="mb-3">¿Cómo quieres proporcionar tu ubicación para el envío?</p>
-                <div class="alert alert-info">
-                    <i class="fa-solid fa-map-marker-alt me-2"></i>
-                    <strong>Opciones disponibles:</strong>
-                    <ul class="mb-0 mt-2">
-                        <li><strong>GPS:</strong> Detección automática y precisa</li>
-                        <li><strong>Manual:</strong> Ingresar dirección manualmente</li>
-                    </ul>
-                </div>
-            </div>
-        `,
-        showCancelButton: true,
-        confirmButtonText: '<i class="fa-solid fa-location-crosshairs me-2"></i>Usar GPS',
-        cancelButtonText: '<i class="fa-solid fa-edit me-2"></i>Ingresar manual',
-        showDenyButton: true,
-        denyButtonText: 'Cancelar compra',
-        confirmButtonColor: '#28a745',
-        cancelButtonColor: '#17a2b8',
-        denyButtonColor: '#dc3545',
-        allowOutsideClick: false
-    });
-
-    // SweetAlert returns an object with flags indicating which button was used.
-    // - isConfirmed: user clicked the confirm button (Usar GPS)
-    // - isDenied: user clicked the deny button (Cancelar compra)
-    // - isDismissed + dismiss === Swal.DismissReason.cancel: user clicked the cancel button (Ingresar manual)
-    if (result.isConfirmed) {
-        return await getCurrentLocationData();
-    }
-
-    if (result.isDismissed && result.dismiss === Swal.DismissReason.cancel) {
+    } catch (error) {
+        console.error('Error en geolocalización, usando entrada manual', error);
         return await getManualLocationData();
     }
-
-    // Deny or any other dismissal means cancel the whole flow
-    return null;
 }
 
 // Función para obtener ubicación GPS
@@ -276,24 +69,49 @@ async function getCurrentLocationData() {
             timestamp: new Date().toISOString()
         };
 
-        // Obtener dirección
-        try {
-            const response = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${location.latitude}&longitude=${location.longitude}&localityLanguage=es`);
-            const data = await response.json();
-            
-            location.address = {
-                full: `${data.locality || data.city || 'Ciudad'}, ${data.principalSubdivision || 'Provincia'}, ${data.countryName || 'Ecuador'}`,
-                city: data.locality || data.city || 'Ciudad',
-                province: data.principalSubdivision || 'Provincia',
-                country: data.countryName || 'Ecuador'
-            };
-        } catch (error) {
-            location.address = {
-                full: `Lat: ${location.latitude.toFixed(4)}, Lng: ${location.longitude.toFixed(4)}`,
-                city: 'Ubicación GPS',
-                province: 'Ecuador',
-                country: 'Ecuador'
-            };
+        // Obtener dirección (NO BLOQUEANTE): asignar una dirección provisional y resolver la búsqueda en background
+        location.address = {
+            full: `Lat: ${location.latitude.toFixed(4)}, Lng: ${location.longitude.toFixed(4)}`,
+            city: 'Ubicación GPS',
+            province: 'Ecuador',
+            country: 'Ecuador'
+        };
+
+        // Realizar reverse-geocode en background durante tiempo idle para no bloquear la experiencia del usuario
+        if (window.rail && typeof window.rail.runDuringIdle === 'function') {
+            window.rail.runDuringIdle(async () => {
+                try {
+                    const response = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${location.latitude}&longitude=${location.longitude}&localityLanguage=es`);
+                    const data = await response.json();
+                    location.address = {
+                        full: `${data.locality || data.city || 'Ciudad'}, ${data.principalSubdivision || 'Provincia'}, ${data.countryName || 'Ecuador'}`,
+                        city: data.locality || data.city || 'Ciudad',
+                        province: data.principalSubdivision || 'Provincia',
+                        country: data.countryName || 'Ecuador'
+                    };
+                    // Actualizar UI si hay un modal visible
+                    try {
+                        const alertEl = document.querySelector('.swal2-html-container .alert-success');
+                        if (alertEl) {
+                            alertEl.innerHTML = `<i class="fa-solid fa-map-marker-alt me-2"></i><strong>Ubicación detectada:</strong><br>${location.address.full}`;
+                        }
+                    } catch(e){}
+                } catch(e){ console.warn('reverse geocode failed (background)', e); }
+            }, { timeout: 5000 });
+        } else {
+            // Fallback: background fetch sin bloquear
+            setTimeout(async () => {
+                try {
+                    const response = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${location.latitude}&longitude=${location.longitude}&localityLanguage=es`);
+                    const data = await response.json();
+                    location.address = {
+                        full: `${data.locality || data.city || 'Ciudad'}, ${data.principalSubdivision || 'Provincia'}, ${data.countryName || 'Ecuador'}`,
+                        city: data.locality || data.city || 'Ciudad',
+                        province: data.principalSubdivision || 'Provincia',
+                        country: data.countryName || 'Ecuador'
+                    };
+                } catch(e){ console.warn('reverse geocode background failed', e); }
+            }, 100);
         }
 
         Swal.close();
@@ -700,6 +518,11 @@ async function showInvoicePreview(carrito, userData, locationData, totals, invoi
         </tr>`
     ).join('');
 
+    // RAIL: mark popup start so we can measure time to appear
+    const popupKey = 'popup:invoice@' + Date.now();
+    try { if (window.rail && window.rail.metrics && window.rail.metrics.markRequestStart) window.rail.metrics.markRequestStart(popupKey); } catch(e){}
+
+    let popupRec = null;
     const result = await Swal.fire({
         title: 'Confirmar Compra',
         html: `
@@ -756,6 +579,11 @@ async function showInvoicePreview(carrito, userData, locationData, totals, invoi
                 </div>
             </div>
         `,
+        didOpen: () => {
+            // Mark popup shown (didOpen) to compute time-to-appear
+            try { if (window.rail && window.rail.metrics && window.rail.metrics.markRequestEnd) popupRec = window.rail.metrics.markRequestEnd(popupKey, { popup: 'invoice', event: 'didOpen' }); } catch(e){}
+            try { if (window.rail && window.rail.metrics && popupRec) window.rail.metrics.report({ type: 'popup', name: 'invoice_appear', duration: popupRec.dur }); } catch(e){}
+        },
         showCancelButton: true,
         confirmButtonText: 'Confirmar Compra',
         cancelButtonText: 'Cancelar',
@@ -819,6 +647,9 @@ function generateOrder(carrito, userData, locationData, totals, invoiceData) {
         timestamp: Date.now()
     };
 }
+
+// Expose generateOrder to global scope (ensure other scripts can call it)
+try { window.generateOrder = generateOrder; window.getLocationForCheckout = getLocationForCheckout; } catch(e) { /* ignore in non-browser contexts */ }
 
 // Guardar en historial
 function saveOrderToHistory(order) {
@@ -946,6 +777,9 @@ async function showFinalInvoice(order) {
         if (result && result.isDenied) {
             // Go to products page as requested
             window.location.href = 'product.html';
+        } else if (result && result.isDismissed && result.dismiss === 'cancel') {
+            // User clicked "Ver Mis Compras" (cancel button)
+            window.location.href = 'compras.html';
         } else if (result && result.isDismissed) {
             // User dismissed the modal (no automatic navigation). Keep them on checkout.
         }
@@ -969,6 +803,12 @@ function initCheckoutLocationMap(mapId, locationData) {
                 `;
             }
             return;
+        }
+
+        // Remove any existing map instance to prevent "already initialized" error
+        if (mapElement._leaflet_id) {
+            mapElement._leaflet_id = undefined;
+            mapElement.innerHTML = '';
         }
 
         const lat = locationData.latitude;
@@ -1528,6 +1368,8 @@ window.enviarCarrito = async function() {
         // ✅ PASO 7: Mostrar confirmación final
         const confirmed = await showInvoicePreview(carrito, userData, locationData, totals, invoiceData);
         if (!confirmed) {
+            try { if (window.rail && window.rail.metrics) window.rail.metrics.report({ type: 'checkout', result: 'canceled_by_user', popupDuration: popupRec ? popupRec.dur : null }); } catch(e){}
+            try { if (window.rail && window.rail.metrics) window.rail.metrics.markButtonClickEnd('confirmar-productos'); } catch(e){}
             return;
         }
 
@@ -1584,9 +1426,16 @@ window.enviarCarrito = async function() {
                     serverOrderId = res.orderId;
                     order.id = res.orderId;
                     console.log('✅ Checkout persisted on server, orderId=', serverOrderId);
+
+                    // RAIL: report successful checkout summary (include popup appearance time when available)
+                    try {
+                        if (window.rail && window.rail.metrics) window.rail.metrics.report({ type: 'checkout', result: 'success', orderId: serverOrderId, itemCount: carrito.length, totals, popupDuration: popupRec ? popupRec.dur : null });
+                        if (window.rail && window.rail.metrics) window.rail.metrics.markButtonClickEnd('confirmar-productos');
+                    } catch(e){}
                 } else {
                     // Server responded but without orderId
                     console.warn('⚠️ Server checkout did not return orderId:', res);
+                    try { if (window.rail && window.rail.metrics) window.rail.metrics.report({ type: 'checkout', result: 'no-orderId', response: res }); } catch(e){}
                     await Swal.fire({
                         title: 'Error al procesar en el servidor',
                         html: `<div>El servidor respondió pero no devolvió un ID de orden.<br><pre style="text-align:left; white-space:pre-wrap;">${JSON.stringify(res)}</pre></div>`,
@@ -1611,6 +1460,9 @@ window.enviarCarrito = async function() {
                 icon: 'error',
                 confirmButtonText: 'OK'
             });
+
+            // RAIL: report checkout error
+            try { if (window.rail && window.rail.metrics) window.rail.metrics.report({ type: 'checkout', result: 'error', message }); } catch(e){}
         }
 
         // Guardar historial local: preferir guardado en servidor

@@ -18,6 +18,7 @@ const reviewsRouter = require('./routes/reviews');
 const categoriesRouter = require('./routes/categories');
 const publicRouter = require('./routes/public');
 const reportsRouter = require('./routes/reports');
+const metricsRouter = require('./routes/metrics');
 const Product = require('./models/Product');
 const User = require('./models/User');
 // Note: suppliers routes are not implemented yet. The model is available at ./models/Supplier
@@ -88,7 +89,7 @@ app.use('/api/categories', categoriesRouter);
 // suppliers routes not mounted: implement routes in ./server/routes/suppliers.js if needed
 // app.use('/api/suppliers', suppliersRouter);
 app.use('/reports', reportsRouter);
-
+app.use('/metrics', metricsRouter);
 
 // Debug routes (only enabled when DEBUG_API=true in env)
 app.use('/api/debug', debugRouter);

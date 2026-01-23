@@ -2,6 +2,38 @@
 // Page-based checkout UI: accordion on left, order summary on right.
 (function(){
 
+// Safeguard: provide lightweight fallbacks if checkoutManager_new.js has not loaded yet
+if (typeof window.getLocationForCheckout !== 'function') {
+  window.getLocationForCheckout = async function(){ console.warn('getLocationForCheckout (stub): manager not loaded'); return null; };
+}
+if (typeof window.generateOrder !== 'function') {
+  window.generateOrder = function(carrito = [], userData = {}, locationData = { address: { full: '' } }, totals = {}, invoiceData = {}) {
+    console.warn('generateOrder (stub): manager not loaded');
+    return {
+      id: 'ORD-' + Date.now(),
+      fecha: new Date().toISOString(),
+      cliente: userData,
+      entrega: locationData,
+      productos: carrito,
+      totales: totals,
+      pago: { metodo: invoiceData.metodoPago || '' }
+    };
+  };
+}
+if (typeof window.togglePaymentFields !== 'function') {
+  window.togglePaymentFields = function(){
+    const metodoPago = (document.getElementById('metodoPago') || {}).value || '';
+    const tarjetaFields = document.getElementById('tarjetaFields') || document.getElementById('cardFields');
+    const paypalFields = document.getElementById('paypalFields');
+    const transferenciaFields = document.getElementById('transferenciaFields');
+    try {
+      if (tarjetaFields) tarjetaFields.style.display = metodoPago === 'tarjeta' ? 'block' : 'none';
+      if (paypalFields) paypalFields.style.display = metodoPago === 'paypal' ? 'block' : 'none';
+      if (transferenciaFields) transferenciaFields.style.display = metodoPago === 'transferencia' ? 'block' : 'none';
+    } catch(e) { console.warn('togglePaymentFields (stub) failed', e); }
+  };
+}
+
 function formatMoney(v){ return '$' + Number(v||0).toFixed(2); }
 
 // Validation helpers
@@ -494,6 +526,10 @@ async function ensureLeafletAndInit(mapId, locationData){
 // Attempt to auto-detect location on page load (non-blocking)
 async function attemptAutoLocation(){
   try {
+    if (typeof getLocationForCheckout !== 'function') {
+      console.warn('getLocationForCheckout not available, skipping auto location');
+      return;
+    }
     const loc = await getLocationForCheckout();
     if (!loc) return;
     const addrFull = loc.address && (loc.address.full || loc.address) ? (loc.address.full || loc.address) : '';
@@ -1252,8 +1288,73 @@ function wirePageEvents(){
 
 function validateEmail(email){ if(!email) return false; return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email); }
 
+// Validate cart products against server and remove invalid ones
+async function validateCartProducts() {
+  try {
+    console.log('🔍 Validating cart products...');
+    const carrito = JSON.parse(localStorage.getItem('carrito') || '[]');
+    
+    if (carrito.length === 0) {
+      console.log('✅ Cart is empty, no validation needed');
+      return true;
+    }
+    
+    const validationPromises = carrito.map(async (item) => {
+      try {
+        const response = await fetch(`/api/products/${item.id}`);
+        return {
+          item,
+          valid: response.ok,
+          status: response.status
+        };
+      } catch (error) {
+        console.warn(`Failed to validate product ${item.id}:`, error);
+        return { item, valid: false, status: 0 };
+      }
+    });
+    
+    const results = await Promise.all(validationPromises);
+    const invalidItems = results.filter(r => !r.valid);
+    
+    if (invalidItems.length > 0) {
+      console.warn(`⚠️ Found ${invalidItems.length} invalid product(s) in cart`);
+      
+      // Remove invalid products
+      const validItems = results.filter(r => r.valid).map(r => r.item);
+      localStorage.setItem('carrito', JSON.stringify(validItems));
+      
+      // Notify user
+      await Swal.fire({
+        title: 'Productos no disponibles',
+        html: `Se han eliminado ${invalidItems.length} producto(s) que ya no están disponibles.<br><small class="text-muted">${invalidItems.map(i => i.item.nombre).join(', ')}</small>`,
+        icon: 'info',
+        confirmButtonText: 'Entendido'
+      });
+      
+      console.log(`✅ Cart cleaned: ${validItems.length} valid products remaining`);
+      
+      // Reload if no products left
+      if (validItems.length === 0) {
+        window.location.href = 'cart.html';
+        return false;
+      }
+      
+      return true;
+    }
+    
+    console.log('✅ All cart products are valid');
+    return true;
+  } catch (error) {
+    console.error('Cart validation failed:', error);
+    return true; // Continue anyway
+  }
+}
+
 // init
-document.addEventListener('DOMContentLoaded', ()=>{
+document.addEventListener('DOMContentLoaded', async ()=>{
+  // Validate cart before rendering
+  await validateCartProducts();
+  
   document.getElementById('checkoutAccordion').innerHTML = buildAccordion();
   wirePageEvents();
   renderSummary();

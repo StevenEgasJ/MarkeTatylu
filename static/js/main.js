@@ -43,6 +43,27 @@ document.addEventListener("DOMContentLoaded", async function() {
         }
     }
 
+    // RAIL: measure CTA and schedule a metrics report
+    try {
+        // Mark CTA interactive
+        const cta = document.getElementById('cta-comprar-ahora');
+        if (cta) {
+            try { if (window.rail && window.rail.metrics) window.rail.metrics.markButtonInteractive('cta-comprar-ahora'); } catch(e){}
+            cta.addEventListener('click', function(){ 
+                try { if (window.rail && window.rail.metrics) window.rail.metrics.markButtonClickStart('cta-comprar-ahora'); } catch(e){}
+                // mark end immediately before navigation to ensure metric is recorded
+                try { if (window.rail && window.rail.metrics) window.rail.metrics.markButtonClickEnd('cta-comprar-ahora'); } catch(e){}
+            });
+        }
+
+        // Quick report after initial idle (gives Railway visible metrics in console)
+        if (window.rail && window.rail.metrics && typeof window.rail.runDuringIdle === 'function') {
+            window.rail.runDuringIdle(() => { window.rail.metrics.report({ note: 'initial-idle-report' }); }, { timeout: 2000 });
+        } else if (window.rail && window.rail.metrics) {
+            setTimeout(() => window.rail.metrics.report({ note: 'initial-delayed-report' }), 2000);
+        }
+    } catch(e){ /* ignore */ }
+
     // Preferir cargar productos desde la API (Atlas) antes de renderizar
     if (typeof productManager !== 'undefined' && window.api && typeof productManager.fetchProductsFromApi === 'function') {
         try {
@@ -74,6 +95,18 @@ document.addEventListener("DOMContentLoaded", async function() {
         }
         
         loadProductsFromManager();
+
+        // RAIL: programar tareas no críticas durante idle para mejorar percepción de rendimiento
+        if (window.rail && typeof window.rail.runDuringIdle === 'function') {
+            window.rail.runDuringIdle(() => {
+                try { window.rail.lazyLoadImages(document); } catch(e){}
+                try {
+                    // Stagger small welcome animations without blocking initial paint
+                    const animEls = document.querySelectorAll('.banner-title, .banner-subtitle, .btn-1');
+                    animEls.forEach((el, i) => setTimeout(()=> el.classList.add('animate__animated', 'animate__fadeInUp'), i*120));
+                } catch(e){}
+            });
+        }
     }
     
     // Inicializar búsqueda
@@ -107,7 +140,12 @@ document.addEventListener("DOMContentLoaded", async function() {
     // Evento para confirmar el carrito
     const confirmarBtn = document.getElementById("confirmar-productos");
     if (confirmarBtn) {
+        // Mark interactive for metrics
+        try { if (window.rail && window.rail.metrics) window.rail.metrics.markButtonInteractive('confirmar-productos'); } catch(e){}
         confirmarBtn.addEventListener("click", function(event) {
+            // RAIL: mark click start
+            try { if (window.rail && window.rail.metrics) window.rail.metrics.markButtonClickStart('confirmar-productos'); } catch(e){}
+
             // If this is a plain link (<a href="...">), prefer normal navigation
             if (confirmarBtn.tagName === 'A' && confirmarBtn.getAttribute('href')) {
                 // If user not logged in, block navigation and prompt to login
@@ -127,23 +165,30 @@ document.addEventListener("DOMContentLoaded", async function() {
                     } else {
                         if (confirm('Necesitas iniciar sesión. Ir a login?')) window.location.href = 'login.html';
                     }
+                    try { if (window.rail && window.rail.metrics) window.rail.metrics.markButtonClickEnd('confirmar-productos'); } catch(e){}
                     return;
                 }
 
                 // Logged in -> allow default navigation to the href (e.g., checkout.html)
+                try { if (window.rail && window.rail.metrics) window.rail.metrics.markButtonClickEnd('confirmar-productos'); } catch(e){}
                 return;
             }
 
             // Otherwise, this is a JS-driven button: prevent default and run the JS checkout flow
             event.preventDefault();
             console.log('🛒 Checkout button clicked from main.js (JS-driven)');
-            if (typeof window.enviarCarrito === 'function') {
-                window.enviarCarrito();
-            } else if (typeof window.testCheckout === 'function') {
-                window.testCheckout();
-            } else {
-                console.error('No checkout function available');
-                alert('Sistema de checkout no disponible');
+            try {
+                if (typeof window.enviarCarrito === 'function') {
+                    window.enviarCarrito();
+                } else if (typeof window.testCheckout === 'function') {
+                    window.testCheckout();
+                } else {
+                    console.error('No checkout function available');
+                    alert('Sistema de checkout no disponible');
+                }
+            } finally {
+                // mark click end shortly after to capture duration
+                try { setTimeout(()=>{ if (window.rail && window.rail.metrics) window.rail.metrics.markButtonClickEnd('confirmar-productos'); }, 30); } catch(e){}
             }
         });
     }
@@ -328,15 +373,61 @@ function loadProductsFromManager() {
             } else {
                 // apply current sort selection
                 products = applySort(products);
-                products.forEach(product => {
+
+                // Fast first paint: render a small initial batch synchronously to get quick FCP
+                const initialCount = Math.min(12, products.length);
+                products.slice(0, initialCount).forEach(product => {
                     const productCard = createProductCard(product);
                     productContainer.appendChild(productCard);
                 });
 
+                // Render the rest in idle/batched chunks to avoid janking main thread
+                if (products.length > initialCount) {
+                    const remaining = products.slice(initialCount);
+                    if (window.rail && typeof window.rail.batchRender === 'function') {
+                        window.rail.batchRender(remaining, p => createProductCard(p), productContainer, 8);
+                    } else {
+                        // Fallback: simple async append
+                        setTimeout(() => {
+                            remaining.forEach(product => productContainer.appendChild(createProductCard(product)));
+                            if (window.rail && typeof window.rail.lazyLoadImages === 'function') window.rail.lazyLoadImages(productContainer);
+                        }, 60);
+                    }
+                } else {
+                    if (window.rail && typeof window.rail.lazyLoadImages === 'function') window.rail.lazyLoadImages(productContainer);
+                }
+
                 // Kick off async reviews caching in background (will re-render when ready)
                 try { initReviewsCache(); } catch (e) { console.warn('initReviewsCache failed to start', e); }
-                
+
+                // Ensure we have a single delegated listener for add-to-cart buttons
+                try {
+                    if (productContainer && !productContainer.dataset.railDelegated) {
+                        productContainer.dataset.railDelegated = 'true';
+                        productContainer.addEventListener('click', function(ev){
+                            const btn = ev.target.closest && ev.target.closest('.add-to-cart-btn');
+                            if (!btn) return;
+                            const pid = btn.dataset.id;
+                            try { if (window.rail && window.rail.metrics) window.rail.metrics.markButtonClickStart('addToCart:'+pid); } catch(e){}
+                            // Extract name and other data from the card DOM
+                            const card = btn.closest('.product-card');
+                            const name = card ? (card.querySelector('.card-title')||{}).textContent : '';
+                            const price = btn.dataset.price || 0;
+                            const image = btn.dataset.imagen || '';
+                            const ml = btn.dataset.mililitros || '';
+                            // Call existing agregarAlCarrito function (keeps previous behavior)
+                            try { agregarAlCarrito(pid, name, parseFloat(price), image, ml); } catch(e){ console.warn('addToCart handler error', e); }
+                        }, false);
+
+                        // Mark buttons as interactive once they are present
+                        // Single marker for add-to-cart interactivity to avoid per-product clutter
+                        try { if (window.rail && window.rail.metrics) window.rail.metrics.markButtonInteractive('addToCart:delegate'); } catch(e){};
+                    }
+                } catch(e){ console.warn('Could not attach delegated add-to-cart listener', e); }
+
                 console.log('✅ Productos renderizados en el contenedor');
+                // RAIL: single summary report for products section (avoid per-product clutter)
+                try { if (window.rail && window.rail.metrics) window.rail.metrics.report({ section: 'products', action: 'render_complete', itemCount: products.length }); } catch(e){};
             }
         } else {
             console.log('❌ Contenedor products-container no encontrado');
@@ -377,7 +468,8 @@ function createProductCard(product) {
     card.innerHTML = `
         <div class="card product-card h-100 position-relative">
             ${hasDiscount ? `<div class="discount-badge">-${descuento}%</div>` : ''}
-            <img src="${product.imagen}" class="card-img-top product-image" alt="${product.nombre}">
+            <!-- Lazy image: placeholder src and data-src for IntersectionObserver -->
+            <img data-src="${product.imagen}" src="./static/img/placeholder.svg" loading="lazy" class="card-img-top product-image lazy" alt="${product.nombre}">
             <div class="card-body d-flex flex-column">
                 <h5 class="card-title">${product.nombre}</h5>
                 <div class="product-rating" data-product-id="${product.id}">
@@ -398,17 +490,15 @@ function createProductCard(product) {
                     </div>
                     <div class="d-grid gap-2">
                         <button class="btn btn-outline-secondary" onclick="openProductModal('${product.id || product._id}')">Ver más</button>
-            <button class="btn btn-primary" 
-                onclick="agregarAlCarrito('${product.id}', '${product.nombre}', ${discountedPrice.toFixed(2)}, '${product.imagen}', '${product.capacidad || ''}')"
-                                ${(product.stock || 0) <= 0 ? 'disabled' : ''}>
-                                ${(product.stock || 0) <= 0 ? 'Sin Stock' : 'Agregar al Carrito'}
+                        <button class="btn btn-primary add-to-cart-btn" data-id="${product.id}" data-price="${discountedPrice.toFixed(2)}" data-imagen="${product.imagen}" data-mililitros="${product.capacidad || ''}" ${(product.stock || 0) <= 0 ? 'disabled' : ''}>
+                            ${(product.stock || 0) <= 0 ? 'Sin Stock' : 'Agregar al Carrito'}
                         </button>
                     </div>
                 </div>
             </div>
         </div>
     `;
-    
+
     return card;
 }
 
@@ -664,6 +754,7 @@ async function agregarAlCarrito(id, nombre, precio, imagen, mililitros) {
                 icon: 'warning',
                 confirmButtonText: 'Entendido'
             });
+            try { if (window.rail && window.rail.metrics) window.rail.metrics.markButtonClickEnd('addToCart:'+id); } catch(e){}
             return;
         }
     }
@@ -691,12 +782,21 @@ async function agregarAlCarrito(id, nombre, precio, imagen, mililitros) {
     localStorage.setItem("carrito", JSON.stringify(carrito));
     actualizarCarritoUI();
 
-    // Animación del carrito
+    // Animación del carrito (usando rAF para animaciones suaves y clase `active`)
     let cartIcon = document.getElementById("cart-icon");
     if (cartIcon) {
-        cartIcon.classList.add("cart-animate");
-        setTimeout(() => cartIcon.classList.remove("cart-animate"), 300);
+        // Add both classes to trigger the transform + animation, then remove 'active' quickly
+        cartIcon.classList.add("cart-animate", "active");
+        requestAnimationFrame(() => {
+            // Remove the 'active' bit after a small delay so the transition plays back
+            setTimeout(() => cartIcon.classList.remove("active"), 100);
+            // Remove the helper class after animation finishes to keep DOM clean
+            setTimeout(() => requestAnimationFrame(() => cartIcon.classList.remove("cart-animate")), 340);
+        });
     }
+
+    // RAIL: mark add-to-cart click completed for metrics
+    try { if (window.rail && window.rail.metrics) window.rail.metrics.markButtonClickEnd('addToCart:'+id); } catch(e){}
 
     // Mostrar notificación con opción de ir al carrito
     try {

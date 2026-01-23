@@ -20,7 +20,7 @@
         <div class="row align-items-center py-3">
           <!-- Logo e Identidad -->
           <div class="col-4 d-flex align-items-center">
-            <img src="./static/img/logo.png" alt="logo" class="img-fluid logo" style="max-height: 50px;">
+            <img src="./static/img/logo.png" alt="logo" class="img-fluid logo" style="max-height: 50px;" loading="eager" fetchpriority="high">
             <h1 class="ms-3 mb-0 text-custom site-title">Tatylu</h1>
           </div>
           <!-- Menú y opciones de usuario -->
@@ -109,7 +109,7 @@
                     </div>
                     <br><br>
                     <h2 class="display-4 mb-4 banner-title animate__animated animate__zoomIn">Alimentos y Hogar<br>Víveres, limpieza y productos esenciales</h2>
-                    <a href="product.html" class="btn btn-1 animate__animated animate__slideInUp">Comprar Ahora <i class="fa-solid fa-arrow-right"></i></a>
+                    <a id="cta-comprar-ahora" href="product.html" class="btn btn-1 animate__animated animate__slideInUp">Comprar Ahora <i class="fa-solid fa-arrow-right"></i></a>
                 </div>
             </div>
         </section>
@@ -140,7 +140,7 @@
 
         <section class="promotions" aria-label="Promociones">
           <article class="promo-card" id="promo-season">
-            <img class="promo-media" id="promoSeasonImg" src="./static/img/promo_navidad.jpg" alt="Promoción de temporada">
+            <img class="promo-media" id="promoSeasonImg" src="./static/img/promo_navidad.jpg" alt="Promoción de temporada" loading="lazy">
             <div class="promo-body">
               <h3 class="promo-title">Promoción de temporada</h3>
               <p class="promo-sub">Ofertas especiales de la temporada en víveres y productos para el hogar. Aprovecha descuentos selectos por tiempo limitado.</p>
@@ -149,7 +149,7 @@
           </article>
 
           <article class="promo-card" id="promo-today">
-            <img class="promo-media" id="promoCarouselImg" src="./static/img/promo_vegetales.jpg" alt="Promoción del día">
+            <img class="promo-media" id="promoCarouselImg" src="./static/img/promo_vegetales.jpg" alt="Promoción del día" loading="lazy">
             <div class="promo-body">
               <h3 class="promo-title">Promoción del día</h3>
               <p class="promo-sub" id="promoCaption">Ofertas diarias en frutas, carnes y limpieza — no te las pierdas.</p>
@@ -202,6 +202,7 @@
     <script src="./static/js/productManager.js"></script>
     <script src="./static/js/checkoutManager_new.js"></script>
     <script src="./static/js/theme-toggle.js"></script>
+    <script src="./static/js/perf/rail.js"></script>
     <script src="./static/js/main.js"></script>
     <script src="./static/js/test-functions.js"></script>
     <script src="./static/js/promotions.js"></script>
