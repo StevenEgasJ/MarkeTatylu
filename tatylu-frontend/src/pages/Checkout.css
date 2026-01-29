@@ -21,6 +21,85 @@
   font-weight: 600;
 }
 
+/* Checkout Map */
+.checkout-map {
+  width: 100%;
+  min-height: 150px;
+  border-radius: 8px;
+  background: #f8f9fa;
+  transition: height 0.3s ease;
+}
+
+/* Summary Card */
+.summary-card {
+  background: #fff;
+  border: 1px solid rgba(0,0,0,0.1);
+  border-radius: 8px;
+  position: sticky;
+  top: 20px;
+}
+
+.summary-content {
+  font-size: 0.95rem;
+}
+
+.summary-hr {
+  border-color: rgba(0,0,0,0.1);
+  margin: 0.75rem 0;
+}
+
+/* Order Button */
+.btn-order {
+  background: linear-gradient(135deg, #8B4513, #A0522D);
+  color: #fff;
+  font-weight: 600;
+  border: none;
+  transition: all 0.3s ease;
+}
+
+.btn-order:hover:not(:disabled) {
+  background: linear-gradient(135deg, #6B3410, #8B4513);
+  color: #fff;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(139, 69, 19, 0.3);
+}
+
+.btn-order:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+}
+
+/* Accordion Styling */
+.accordion-button:not(.collapsed) {
+  background: linear-gradient(135deg, #f8f4f0, #fff);
+  color: #8B4513;
+  box-shadow: none;
+}
+
+.accordion-button:focus {
+  box-shadow: 0 0 0 0.2rem rgba(139, 69, 19, 0.25);
+}
+
+.accordion-item {
+  border-color: rgba(0,0,0,0.1);
+}
+
+/* Success Modal Table */
+.success-order-modal .table {
+  font-size: 0.85rem;
+}
+
+.success-order-modal .table th {
+  background: #f8f9fa;
+  font-weight: 600;
+}
+
+.totals-section {
+  padding: 10px;
+  background: #f8f9fa;
+  border-radius: 6px;
+}
+
 /* Dark theme */
 [data-theme="dark"] .checkout-items {
   color: #e0e0e0;
@@ -35,4 +114,31 @@
 [data-theme="dark"] .payment-option:hover,
 [data-theme="dark"] .payment-option.border-primary {
   border-color: #d4a574 !important;
+}
+
+[data-theme="dark"] .summary-card {
+  background: #2d2d2d;
+  border-color: #4d4d4d;
+}
+
+[data-theme="dark"] .checkout-map {
+  background: #3d3d3d;
+}
+
+[data-theme="dark"] .accordion-button {
+  background: #3d3d3d;
+  color: #e0e0e0;
+}
+
+[data-theme="dark"] .accordion-button:not(.collapsed) {
+  background: #4d4d4d;
+  color: #d4a574;
+}
+
+[data-theme="dark"] .accordion-body {
+  background: #2d2d2d;
+}
+
+[data-theme="dark"] .totals-section {
+  background: #3d3d3d;
 }

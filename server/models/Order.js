@@ -7,7 +7,19 @@ const orderSchema = new mongoose.Schema({
   items: { type: Array, default: [] },
   resumen: { type: Object, default: {} },
   estado: { type: String, default: 'pendiente' },
-  fecha: { type: Date, default: Date.now }
+  fecha: { type: Date, default: Date.now },
+  // Additional order fields
+  direccion: { type: String },
+  ciudad: { type: String },
+  telefono: { type: String },
+  metodoPago: { type: String },
+  tipoEnvio: { type: String },
+  subtotal: { type: Number, default: 0 },
+  iva: { type: Number, default: 0 },
+  envio: { type: Number, default: 0 },
+  discount: { type: Number, default: 0 },
+  total: { type: Number, default: 0 },
+  cliente: { type: Object, default: {} }
 });
 
 async function getNextOrderId() {

@@ -1,7 +1,6 @@
 import axios from 'axios';
 
-// Base URL del backend
-// En desarrollo usa localhost:4000, en producción usa la URL de Render
+
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000';
 
 // Crear instancia de axios
@@ -72,11 +71,16 @@ export const productsAPI = {
 // ==================== CART API ====================
 export const cartAPI = {
   get: () => api.get('/api/cart'),
-  add: (productId, quantity) => api.post('/api/cart/add', { productId, quantity }),
-  update: (productId, quantity) => api.put('/api/cart/update', { productId, quantity }),
-  remove: (productId) => api.delete(`/api/cart/remove/${productId}`),
-  clear: () => api.delete('/api/cart/clear'),
-  applyCoupon: (code) => api.post('/api/cart/coupon', { code })
+  // POST /api/cart - adds item (backend expects {productId, cantidad})
+  add: (productId, quantity) => api.post('/api/cart', { productId, cantidad: quantity }),
+  // For update, we sync by re-posting entire cart or use same add endpoint
+  update: (productId, quantity) => api.post('/api/cart', { productId, cantidad: quantity }),
+  remove: (productId) => api.delete(`/api/cart/${productId}`),
+  // Note: clear requires userId in path - we'll handle this in CartContext
+  clear: (userId) => api.delete(`/api/cart/clear/${userId}`),
+  applyCoupon: (code) => api.post('/api/cart/coupon', { code }),
+  // Calculate totals using backend endpoint
+  calculate: (items) => api.post('/api/cart/calculate', { items })
 };
 
 // ==================== ORDERS API ====================
@@ -152,8 +156,8 @@ export const loyaltyAPI = {
 
 // ==================== PUBLIC API ====================
 export const publicAPI = {
-  // Nota: El servidor no tiene endpoint de promociones, usamos productos destacados
-  getPromotions: () => api.get('/products', { params: { limit: 6 } }), // Usar productos como promociones
+  
+  getPromotions: () => api.get('/products', { params: { limit: 6 } }), 
   getCategories: () => api.get('/api/categories'),
   getFeaturedProducts: () => api.get('/products', { params: { limit: 8 } }),
   sendContactForm: (data) => api.post('/api/auth/contact', data)

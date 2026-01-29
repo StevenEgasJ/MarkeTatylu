@@ -17,7 +17,7 @@ export const CartProvider = ({ children }) => {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
   const [coupon, setCoupon] = useState(null);
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
 
   // Cargar carrito desde localStorage o servidor
   useEffect(() => {
@@ -198,9 +198,12 @@ export const CartProvider = ({ children }) => {
     localStorage.removeItem('carrito');
     setCoupon(null);
 
-    if (isAuthenticated) {
+    if (isAuthenticated && user) {
       try {
-        await cartAPI.clear();
+        const userId = user._id || user.id;
+        if (userId) {
+          await cartAPI.clear(userId);
+        }
       } catch (error) {
         console.log('Error limpiando carrito:', error);
       }

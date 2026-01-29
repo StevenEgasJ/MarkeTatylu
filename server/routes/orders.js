@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const Order = require('../models/Order');
 const Product = require('../models/Product');
+const { authMiddleware } = require('../middleware/auth');
 
 // NOTE: Auth removed intentionally so orders APIs can be used without authentication
 // GET /api/orders - list recent orders
@@ -15,7 +16,17 @@ router.get('/', async (req, res) => {
   }
 });
 
-
+// GET /api/orders/user - get orders for authenticated user
+router.get('/user', authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user._id || req.user.id;
+    const orders = await Order.find({ userId: userId }).sort({ fecha: -1 }).lean();
+    res.json(orders);
+  } catch (err) {
+    console.error('Error fetching user orders:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
 
 // Helper: resolve products by either Mongo _id or numeric/string `id` field
 async function resolveProductsByIdentifiers(identifiers) {
@@ -175,15 +186,52 @@ router.post('/', async (req, res) => {
       })();
     }
 
+    // Calculate total if not provided
+    const subtotalVal = Number(req.body.subtotal) || resumen?.subtotal || 0;
+    const ivaVal = Number(req.body.iva) || 0;
+    const envioVal = Number(req.body.envio) || 0;
+    const discountVal = Number(req.body.discount) || 0;
+    const totalVal = Number(req.body.total) || (subtotalVal + ivaVal + envioVal - discountVal);
+
     const orderPayload = {
       items,
       resumen,
       estado: req.body.estado || 'pendiente',
-      userId: req.body.userId
+      userId: req.body.userId,
+      direccion: req.body.direccion,
+      ciudad: req.body.ciudad,
+      telefono: req.body.telefono,
+      metodoPago: req.body.metodoPago,
+      tipoEnvio: req.body.tipoEnvio,
+      cliente: req.body.cliente,
+      subtotal: subtotalVal,
+      iva: ivaVal,
+      envio: envioVal,
+      discount: discountVal,
+      total: totalVal
     };
 
     const order = new Order(orderPayload);
     await order.save();
+
+    // Reduce stock for each product if order is confirmed
+    if (orderPayload.estado === 'confirmado') {
+      for (const item of items) {
+        const productId = item.productId;
+        const qty = Number(item.quantity || item.cantidad || 0);
+        if (productId && qty > 0) {
+          try {
+            await Product.findOneAndUpdate(
+              { $or: [{ _id: productId }, { id: productId }] },
+              { $inc: { stock: -qty } }
+            );
+          } catch (stockErr) {
+            console.warn('Could not reduce stock for product:', productId, stockErr.message);
+          }
+        }
+      }
+    }
+
     res.status(201).json(order);
   } catch (err) {
     console.error('Error creating order:', err);

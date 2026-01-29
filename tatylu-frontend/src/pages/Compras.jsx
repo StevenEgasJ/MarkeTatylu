@@ -56,12 +56,14 @@ const Compras = () => {
     const methodMap = {
       'efectivo': 'Efectivo',
       'cash': 'Efectivo',
-      'transferencia': 'Transferencia',
+      'transferencia': 'Transferencia Bancaria',
       'transfer': 'Transferencia',
-      'tarjeta': 'Tarjeta',
-      'card': 'Tarjeta'
+      'tarjeta': 'Tarjeta de Crédito/Débito',
+      'card': 'Tarjeta',
+      'paypal': 'PayPal',
+      'No especificado': 'No especificado'
     };
-    return methodMap[method?.toLowerCase()] || method;
+    return methodMap[method?.toLowerCase()] || method || 'No especificado';
   };
 
   const formatDate = (dateString) => {
@@ -77,6 +79,23 @@ const Compras = () => {
 
   const viewOrderDetails = async (order) => {
     const items = order.items || order.productos || [];
+    
+    // Calculate total from items if not available directly
+    const getOrderTotal = (order) => {
+      if (order.total && order.total > 0) return order.total;
+      if (order.resumen?.total && order.resumen.total > 0) return order.resumen.total;
+      // Calculate from items
+      const itemsTotal = items.reduce((sum, item) => {
+        const precio = item.precio || item.price || 0;
+        const qty = item.quantity || item.cantidad || 1;
+        return sum + (precio * qty);
+      }, 0);
+      return itemsTotal;
+    };
+
+    const orderTotal = getOrderTotal(order);
+    const metodoPago = order.metodoPago || order.paymentMethod || 'No especificado';
+
     const itemsHtml = items.map(item => {
       const nombre = item.nombre || item.name;
       const precio = item.precio || item.price || 0;
@@ -89,12 +108,12 @@ const Compras = () => {
     }).join('');
 
     await Swal.fire({
-      title: `Orden #${order._id || order.id}`,
+      title: `Orden #${order.id || order._id?.slice(-8)}`,
       html: `
         <div class="text-start">
           <p><strong>Fecha:</strong> ${formatDate(order.fecha || order.createdAt)}</p>
           <p><strong>Estado:</strong> <span class="badge ${getStatusBadgeClass(order.estado || order.status)}">${getStatusText(order.estado || order.status)}</span></p>
-          <p><strong>Método de pago:</strong> ${getPaymentMethodText(order.metodoPago || order.paymentMethod)}</p>
+          <p><strong>Método de pago:</strong> ${getPaymentMethodText(metodoPago)}</p>
           <hr>
           <table class="table table-sm">
             <thead>
@@ -110,12 +129,12 @@ const Compras = () => {
             <tfoot>
               <tr class="fw-bold">
                 <td colspan="2">Total</td>
-                <td class="text-end">$${(order.total || 0).toFixed(2)}</td>
+                <td class="text-end">$${orderTotal.toFixed(2)}</td>
               </tr>
             </tfoot>
           </table>
           ${order.direccion ? `<p><strong>Dirección:</strong> ${order.direccion}</p>` : ''}
-          ${order.notas ? `<p><strong>Notas:</strong> ${order.notas}</p>` : ''}
+          ${order.telefono ? `<p><strong>Teléfono:</strong> ${order.telefono}</p>` : ''}
         </div>
       `,
       width: '600px',
@@ -172,17 +191,29 @@ const Compras = () => {
           ) : (
             <div className="row">
               {orders.map(order => {
-                const orderId = order._id || order.id;
+                const orderId = order.id || order._id;
                 const fecha = order.fecha || order.createdAt;
                 const estado = order.estado || order.status;
-                const total = order.total || 0;
                 const items = order.items || order.productos || [];
+                
+                // Calculate total from multiple sources
+                let total = order.total;
+                if (!total || total === 0) {
+                  total = order.resumen?.total;
+                }
+                if (!total || total === 0) {
+                  total = items.reduce((sum, item) => {
+                    const precio = item.precio || item.price || 0;
+                    const qty = item.quantity || item.cantidad || 1;
+                    return sum + (precio * qty);
+                  }, 0);
+                }
 
                 return (
-                  <div key={orderId} className="col-12 col-md-6 col-lg-4 mb-4">
+                  <div key={order._id || orderId} className="col-12 col-md-6 col-lg-4 mb-4">
                     <div className="card order-card h-100">
                       <div className="card-header d-flex justify-content-between align-items-center">
-                        <span className="fw-bold">#{orderId?.slice(-8)}</span>
+                        <span className="fw-bold">#{orderId || order._id?.slice(-8)}</span>
                         <span className={`badge ${getStatusBadgeClass(estado)}`}>
                           {getStatusText(estado)}
                         </span>
@@ -196,7 +227,7 @@ const Compras = () => {
                           <strong>{items.length}</strong> producto(s)
                         </p>
                         <h5 className="text-primary mb-0">
-                          Total: ${total.toFixed(2)}
+                          Total: ${(total || 0).toFixed(2)}
                         </h5>
                       </div>
                       <div className="card-footer bg-transparent">
@@ -210,7 +241,7 @@ const Compras = () => {
                           </button>
                           <button
                             className="btn btn-outline-secondary btn-sm"
-                            onClick={() => downloadInvoice(orderId)}
+                            onClick={() => downloadInvoice(order._id || orderId)}
                             title="Descargar factura"
                           >
                             <i className="fas fa-file-pdf"></i>
