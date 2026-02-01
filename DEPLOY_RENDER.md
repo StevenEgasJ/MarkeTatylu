@@ -33,39 +33,61 @@ The frontend nginx config uses environment variables to proxy API requests to th
 6. **Important**: Set the `MONGODB_URI` environment variable for both backend services in the Render dashboard (render.yaml has `sync: false` for this)
 7. Wait for builds to complete (~5-10 minutes)
 
-### Option 2: Manual Service Creation
-1. **Backend CRUD** (create first):
-   - Go to https://dashboard.render.com → New Web Service
-   - Environment: Docker
-   - Repo: `StevenEgasJ/MarketTatylu`, branch: `main`
-   - Dockerfile Path: `services/backend-crud/Dockerfile`
-   - Health Check Path: `/health`
-   - Environment Variables:
-     - `NODE_ENV=production`
-     - `PORT=3001`
-     - `MONGODB_URI=<your-mongodb-connection-string>`
-     - `JWT_SECRET=<random-secret>`
-     - `SESSION_SECRET=<random-secret>`
-     - `CLIENT_URL=https://market-tatylu-frontend.onrender.com`
+### Create services one-by-one (manual)
+Create the backend services first, then create the frontend and point it at the backend URLs.
 
-2. **Backend Business** (create second):
-   - Same steps as Backend CRUD
-   - Dockerfile Path: `services/backend-business/Dockerfile`
-   - Environment Variables:
-     - `NODE_ENV=production`
-     - `PORT=3002`
-     - `MONGODB_URI=<same-as-backend-crud>`
-     - `JWT_SECRET=<same-as-backend-crud>`
-     - `CLIENT_URL=https://market-tatylu-frontend.onrender.com`
-     - `APP_BASE_URL=https://market-tatylu-frontend.onrender.com`
+#### 1) Backend — `market-tatylu-backend-crud` (create first)
+- Dashboard: **New → Web Service**
+- Environment: **Docker**
+- Repo: `github.com/StevenEgasJ/MarketTatylu`  Branch: `main`
+- Dockerfile Path: `services/backend-crud/Dockerfile`
+- Health Check Path: `/health`
+- Environment variables (minimum):
+  - `NODE_ENV=production`
+  - `PORT=3001`
+  - `MONGODB_URI=<your-mongodb-connection-string>`
+  - `JWT_SECRET=<random-secret>`
+  - `SESSION_SECRET=<random-secret>`
+  - `CLIENT_URL=https://<your-frontend-url>`
+- Create the service and wait for build to succeed. Note the public URL (example: `https://market-tatylu-backend-crud.onrender.com`).
 
-3. **Frontend** (create last, after backend URLs are known):
-   - Environment: Docker
-   - Dockerfile Path: `services/frontend/Dockerfile`
-   - Health Check Path: `/`
-   - Environment Variables:
-     - `BACKEND_CRUD_URL=https://market-tatylu-backend-crud.onrender.com`
-     - `BACKEND_BUSINESS_URL=https://market-tatylu-backend-business.onrender.com`
+#### 2) Backend — `market-tatylu-backend-business` (create second)
+- New → **Web Service**
+- Environment: **Docker**
+- Dockerfile Path: `services/backend-business/Dockerfile`
+- Health Check Path: `/health`
+- Environment variables (minimum):
+  - `NODE_ENV=production`
+  - `PORT=3002`
+  - `MONGODB_URI=<same-mongodb-connection-string-as-crud>`
+  - `JWT_SECRET=<same-secret-as-backend-crud>`  (must match JWT between backends)
+  - `CLIENT_URL=https://<your-frontend-url>`
+  - `APP_BASE_URL=https://<your-frontend-url>`
+- Create and wait for build to finish. Note the public URL (example: `https://market-tatylu-backend-business.onrender.com`).
+
+#### 3) Frontend — two options
+Option A — Docker (recommended if you want nginx proxying):
+- New → **Web Service** → Environment: **Docker**
+- Dockerfile Path: `services/frontend/Dockerfile`
+- Health Check Path: `/`
+- Environment variables:
+  - `BACKEND_CRUD_URL=https://<your-backend-crud-url>`
+  - `BACKEND_BUSINESS_URL=https://<your-backend-business-url>`
+- Create and wait for build to finish.
+
+Option B — Static Site (free, simpler)
+- New → **Static Site** (no Docker)
+- Publish directory: `services/frontend/public`
+- This is free on Render and ideal for purely static HTML/JS sites.
+
+---
+**Checklist after creation**
+- Confirm both backends respond: `https://<backend-url>/health` → should return JSON `{ status: 'ok' }`.
+- Set the frontend `BACKEND_CRUD_URL` and `BACKEND_BUSINESS_URL` correctly if using Docker frontend.
+- Ensure `MONGODB_URI` is set and reachable from both backends.
+- If using emails, add SMTP env vars to `market-tatylu-backend-business` (`SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`).
+
+If you want, I can generate a short copy-paste checklist for each Render service form (values pre-filled) to speed up creation.
 
 ## Local Testing
 
