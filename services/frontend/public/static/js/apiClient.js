@@ -150,9 +150,31 @@
 
     pingCrud: async () => {
       try {
-        const res = await fetch(API_PREFIX + '/health/crud', { method: 'GET' });
-        window.__crudUp = res.ok;
-        return res.ok;
+        // Retry logic: try up to 3 times with 1 second delay
+        let retries = 3;
+        let lastError = null;
+        
+        for (let i = 0; i < retries; i++) {
+          try {
+            const res = await fetch(API_PREFIX + '/health/crud', { method: 'GET' });
+            if (res.ok) {
+              window.__crudUp = true;
+              return true;
+            }
+            lastError = new Error(`HTTP ${res.status}`);
+          } catch (err) {
+            lastError = err;
+          }
+          
+          // If not the last retry, wait 1 second before retrying
+          if (i < retries - 1) {
+            await new Promise(resolve => setTimeout(resolve, 1000));
+          }
+        }
+        
+        // All retries failed
+        window.__crudUp = false;
+        return false;
       } catch (err) {
         window.__crudUp = false;
         return false;

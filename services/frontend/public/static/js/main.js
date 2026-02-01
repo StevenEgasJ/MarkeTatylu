@@ -375,9 +375,27 @@ function loadProductsFromManager() {
             
             // Check CRUD server availability before displaying products
             (async () => {
+                // Retry logic for CRUD health check
+                const checkCrudWithRetry = async () => {
+                    let retries = 3;
+                    for (let i = 0; i < retries; i++) {
+                        try {
+                            const res = await fetch('/api/health/crud', { method: 'GET' });
+                            if (res.ok) return true;
+                        } catch (_) {
+                            // Continue to next retry
+                        }
+                        // If not the last retry, wait 1 second before retrying
+                        if (i < retries - 1) {
+                            await new Promise(resolve => setTimeout(resolve, 1000));
+                        }
+                    }
+                    return false;
+                };
+                
                 const crudUp = (window.api && typeof window.api.pingCrud === 'function')
                     ? await window.api.pingCrud()
-                    : await (async () => { try { const res = await fetch('/api/health/crud', { method: 'GET' }); return res.ok; } catch (_) { return false; } })();
+                    : await checkCrudWithRetry();
                 
                 if (!crudUp) {
                     productContainer.innerHTML = `
@@ -814,6 +832,27 @@ async function ensureBackendAvailable({ requireBusiness = false, requireCrud = f
 
 async function agregarAlCarrito(id, nombre, precio, imagen, mililitros) {
     console.log('🛒 agregarAlCarrito called with:', { id, nombre, precio, tipo: typeof id });
+    
+    // Check if business server is available (required for checkout operations)
+    if (window.__businessUp === false) {
+        try {
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    title: 'Servidor No Disponible',
+                    text: 'El servidor de business está temporalmente fuera de servicio. No puedes agregar productos al carrito en este momento.',
+                    icon: 'error',
+                    confirmButtonText: 'Entendido'
+                });
+            } else {
+                alert('El servidor de business está fuera de servicio. No puedes agregar productos al carrito.');
+            }
+        } catch (err) {
+            console.warn('Error showing offline message:', err);
+        }
+        try { if (window.rail && window.rail.metrics) window.rail.metrics.markButtonClickEnd('addToCart:'+id); } catch(e){}
+        return;
+    }
+    
     // NOTE: Allow adding to cart even when not logged in. Login will be enforced at checkout.
 
     // Verificar stock disponible usando productManager

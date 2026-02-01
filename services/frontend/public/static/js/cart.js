@@ -1,5 +1,30 @@
 (function(){
   // Cart rendering and simple UI updates for cart.html
+  
+  // Check if business server is down and show warning
+  function checkBusinessServerStatus() {
+    if (window.__businessUp === false) {
+      const alertContainer = document.createElement('div');
+      alertContainer.id = 'business-down-alert';
+      alertContainer.innerHTML = `
+        <div class="alert alert-danger alert-dismissible fade show m-3" role="alert">
+          <strong><i class="fa-solid fa-server me-2"></i>Servidor No Disponible</strong>
+          <p class="mb-0">El servidor de business está temporalmente fuera de servicio. No puedes proceder con el checkout en este momento.</p>
+          <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+      `;
+      const mainElement = document.querySelector('main') || document.querySelector('.container') || document.body;
+      mainElement.insertBefore(alertContainer, mainElement.firstChild);
+    }
+  }
+  
+  // Check status when page loads
+  document.addEventListener('DOMContentLoaded', checkBusinessServerStatus);
+  // Also check immediately in case DOMContentLoaded has already fired
+  if (document.readyState !== 'loading') {
+    checkBusinessServerStatus();
+  }
+  
   function formatCurrency(n){
     return '$' + Number(n || 0).toFixed(2);
   }
@@ -225,6 +250,21 @@
     const confirmarBtn = document.getElementById('confirmar-productos');
     if (confirmarBtn) {
       confirmarBtn.addEventListener('click', function(e){
+        // Check if business server is available
+        if (window.__businessUp === false) {
+          e.preventDefault();
+          e.stopPropagation();
+          try { 
+            Swal.fire({ 
+              title: 'Servidor No Disponible', 
+              text: 'El servidor de business está temporalmente fuera de servicio. No puedes proceder con el checkout en este momento.', 
+              icon: 'error',
+              confirmButtonText: 'Entendido'
+            }); 
+          } catch(_){ }
+          return;
+        }
+        
         // If button has .disabled class, prevent navigation
         if (confirmarBtn.classList.contains('disabled')) {
           e.preventDefault();

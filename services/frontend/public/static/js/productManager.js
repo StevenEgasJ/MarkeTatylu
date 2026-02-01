@@ -216,19 +216,27 @@ class ProductManager {
         try {
             console.log(`🔄 Actualizando stock del producto ${productId} a ${newStock}`);
             
-            // Validar que CRUD backend está disponible
-            const pingCrud = async () => {
-              try {
-                const res = await fetch('/api/health/crud', { method: 'GET' });
-                return res.ok;
-              } catch (_) {
-                return false;
+            // Validar que CRUD backend está disponible with retry logic
+            const pingCrudWithRetry = async () => {
+              let retries = 3;
+              for (let i = 0; i < retries; i++) {
+                try {
+                  const res = await fetch('/api/health/crud', { method: 'GET' });
+                  if (res.ok) return true;
+                } catch (_) {
+                  // Continue to next retry
+                }
+                // If not the last retry, wait 1 second before retrying
+                if (i < retries - 1) {
+                  await new Promise(resolve => setTimeout(resolve, 1000));
+                }
               }
+              return false;
             };
             
             const crudUp = (window.api && typeof window.api.pingCrud === 'function')
               ? await window.api.pingCrud()
-              : await pingCrud();
+              : await pingCrudWithRetry();
             
             if (!crudUp) {
               const msg = 'El servidor CRUD está caído. No se puede actualizar el stock.';
