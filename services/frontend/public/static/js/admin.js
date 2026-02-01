@@ -512,6 +512,15 @@ class AdminPanelManager {
         (async () => {
             Swal.fire({ title: 'Guardando producto...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
             try {
+                // Validate CRUD server availability
+                const crudUp = (window.api && typeof window.api.pingCrud === 'function')
+                    ? await window.api.pingCrud()
+                    : await (async () => { try { const res = await fetch('/api/health/crud', { method: 'GET' }); return res.ok; } catch (_) { return false; } })();
+                if (!crudUp) {
+                    Swal.fire({ icon: 'error', title: 'Servidor CRUD caído', text: 'El servidor CRUD está fuera de servicio. No se puede crear el producto.' });
+                    return;
+                }
+
                 // Build payload - server expects fields like nombre, precio, categoria, stock, imagen, descripcion
                 const payload = {
                     nombre: productData.nombre,
@@ -647,6 +656,15 @@ class AdminPanelManager {
         (async () => {
             Swal.fire({ title: 'Actualizando producto...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
             try {
+                // Validate CRUD server availability
+                const crudUp = (window.api && typeof window.api.pingCrud === 'function')
+                    ? await window.api.pingCrud()
+                    : await (async () => { try { const res = await fetch('/api/health/crud', { method: 'GET' }); return res.ok; } catch (_) { return false; } })();
+                if (!crudUp) {
+                    Swal.fire({ icon: 'error', title: 'Servidor CRUD caído', text: 'El servidor CRUD está fuera de servicio. No se puede actualizar el producto.' });
+                    return;
+                }
+
                 const id = productData.id;
                 const payload = {
                     nombre: productData.nombre,
@@ -695,6 +713,15 @@ class AdminPanelManager {
                         didOpen: () => Swal.showLoading() 
                     });
                     try {
+                        // Validate CRUD server availability
+                        const crudUp = (window.api && typeof window.api.pingCrud === 'function')
+                            ? await window.api.pingCrud()
+                            : await (async () => { try { const res = await fetch('/api/health/crud', { method: 'GET' }); return res.ok; } catch (_) { return false; } })();
+                        if (!crudUp) {
+                            Swal.fire({ icon: 'error', title: 'Servidor CRUD caído', text: 'El servidor CRUD está fuera de servicio. No se puede eliminar el producto.' });
+                            return;
+                        }
+
                         if (window.api && typeof window.api.deleteProduct === 'function') {
                             await window.api.deleteProduct(id);
                             // Refresh in-memory cache from server
