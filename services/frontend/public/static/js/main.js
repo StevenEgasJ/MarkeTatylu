@@ -268,7 +268,13 @@ async function initReviewsCache() {
 
     try {
         // Attempt to fetch all reviews via admin endpoint (returns all reviews). This endpoint is present in the repo.
-        const res = await fetch('/api/reviews/admin/all');
+        // Use a longer timeout since this is a background operation
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
+        
+        const res = await fetch('/api/reviews/admin/all', { signal: controller.signal });
+        clearTimeout(timeoutId);
+        
         if (!res.ok) throw new Error('Reviews fetch failed: ' + res.status);
         const all = await res.json();
         // Build map: { productId: { avg: Number, count: Number } }
@@ -290,6 +296,7 @@ async function initReviewsCache() {
         });
 
         window._reviewsMap = reviewsMap;
+        console.log('✅ Reviews cache initialized with', Object.keys(reviewsMap).length, 'products');
 
         // Re-render product grid if present so ratings appear
         if (document.getElementById('products-container')) {
@@ -298,7 +305,8 @@ async function initReviewsCache() {
             } catch (e) { console.warn('Could not re-render products after reviews cache', e); }
         }
     } catch (err) {
-        console.warn('initReviewsCache error:', err);
+        // Silent fail - don't show alerts for background cache operations
+        console.warn('initReviewsCache (background operation):', err && err.message ? err.message : err);
     }
 }
 

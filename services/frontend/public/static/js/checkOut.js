@@ -6,15 +6,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // Cargar datos del carrito
     const loadCart = async() => {
         try {
-            // Check that the CRUD backend is available
-            if (window.api && typeof window.api.pingCrud === 'function') {
-                const up = await window.api.pingCrud();
-                if (!up) {
-                    await Swal.fire({ icon: 'error', title: 'Servidor caído', text: 'El servidor de datos (CRUD) está caído. No se puede cargar el carrito.' });
-                    window.location.href = '/cart';
-                    return;
-                }
-            }
+            // REMOVED: Don't validate backend on page load (passive operation)
+            // Only validate when user clicks "finalizar compra" (checkout action)
 
             const response = await fetch(`/api/cart/${cartId}`);
             const cart = await response.json();

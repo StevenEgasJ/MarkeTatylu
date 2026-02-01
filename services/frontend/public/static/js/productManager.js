@@ -7,7 +7,7 @@ class ProductManager {
         this.products = [];
         this.loadingPromise = null; // Para evitar llamadas concurrentes
         this.lastLoadTime = 0; // Para throttle
-        this.loadThrottleMs = 5000; // Mínimo 5 segundos entre loads
+        this.loadThrottleMs = 15000; // Mínimo 15 segundos entre loads para evitar rate limiting
         this.loadProductsSync(); // Cargar inmediatamente desde localStorage de forma síncrona
         this.loadProducts(); // Luego intentar actualizar desde servidor de forma asíncrona
     }
