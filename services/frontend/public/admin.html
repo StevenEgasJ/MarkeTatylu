@@ -199,6 +199,9 @@
                 <div id="dashboard-section" class="content-section active">
                     <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
                         <h1 class="h2">Dashboard</h1>
+                        <button class="btn btn-success" onclick="exportDashboardPDF()">
+                            <i class="fa-solid fa-file-pdf me-2"></i>Descargar PDF
+                        </button>
                     </div>
                     
                     <div class="row">
@@ -831,6 +834,7 @@
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="./static/js/productManager.js"></script>
     <script src="./static/js/product-codes.js"></script>
     <!-- API client provides window.api helpers when available -->
@@ -838,7 +842,7 @@
     <script src="./static/js/inventory-forecast.js"></script>
     <script src="./static/js/supplier-manager.js"></script>
     <!-- Use the unified admin script (server-aware) instead of the old admin-new.js -->
-    <script src="./static/js/admin.js"></script>
+    <script src="./static/js/admin.js?v=2.1"></script>
     <script src="./static/js/admin-reviews.js"></script>
     
     <script>
@@ -914,6 +918,238 @@
             const dashLink = document.querySelector('.sidebar .nav-link[onclick^="showDashboard"]');
             if (dashLink) dashLink.classList.add('active');
             _showSectionById('dashboard-section');
+            adminManager.loadDashboard();
+        }
+
+        // Export Dashboard to PDF
+        async function exportDashboardPDF() {
+            try {
+                // Check if jsPDF is loaded
+                if (typeof window.jspdf === 'undefined') {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: 'La librería jsPDF no está cargada. Por favor recarga la página.'
+                    });
+                    return;
+                }
+
+                // Check if business server is up
+                if (window.__businessUp === false) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Servidor No Disponible',
+                        text: 'El servidor de business está fuera de servicio. No se pueden generar estadísticas para el PDF.'
+                    });
+                    return;
+                }
+
+                // Get dashboard data
+                const productos = adminManager.getProducts();
+                const usuarios = adminManager.getUsers();
+                const pedidos = adminManager.getOrders();
+                const totalSales = pedidos.reduce((sum, order) => sum + (order.totales?.total || 0), 0);
+
+                // Create PDF
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF();
+
+                // Configure fonts
+                doc.setFont('helvetica');
+
+                // Header with logo and title
+                doc.setFontSize(20);
+                doc.setTextColor(40, 116, 166);
+                doc.text('TATYLU', 20, 20);
+                doc.setFontSize(12);
+                doc.setTextColor(100, 100, 100);
+                doc.text('Electrodomésticos y Más', 20, 28);
+
+                // Report title
+                doc.setFontSize(16);
+                doc.setTextColor(0, 0, 0);
+                doc.text('REPORTE DE DASHBOARD', 120, 20);
+                
+                // Date
+                doc.setFontSize(10);
+                doc.text(`Fecha: ${new Date().toLocaleDateString('es-EC')}`, 120, 28);
+                doc.text(`Hora: ${new Date().toLocaleTimeString('es-EC')}`, 120, 34);
+
+                // Separator line
+                doc.setLineWidth(0.5);
+                doc.line(20, 40, 190, 40);
+
+                // Dashboard Statistics
+                let yPos = 50;
+                doc.setFontSize(14);
+                doc.setTextColor(0, 0, 0);
+                doc.text('RESUMEN GENERAL:', 20, yPos);
+                
+                yPos += 12;
+                doc.setFontSize(11);
+                
+                // Statistics boxes
+                const stats = [
+                    { label: 'Total Productos', value: productos.length, color: [63, 81, 181] },
+                    { label: 'Total Usuarios', value: usuarios.length, color: [76, 175, 80] },
+                    { label: 'Total Pedidos', value: pedidos.length, color: [255, 152, 0] },
+                    { label: 'Ventas Totales', value: `$${totalSales.toFixed(2)}`, color: [33, 150, 243] }
+                ];
+
+                stats.forEach((stat, index) => {
+                    const xPos = 20 + (index % 2) * 90;
+                    if (index % 2 === 0 && index > 0) yPos += 25;
+                    
+                    // Draw colored box
+                    doc.setFillColor(...stat.color);
+                    doc.rect(xPos, yPos - 6, 80, 18, 'F');
+                    
+                    // Draw text
+                    doc.setTextColor(255, 255, 255);
+                    doc.setFontSize(9);
+                    doc.text(stat.label, xPos + 3, yPos);
+                    doc.setFontSize(14);
+                    doc.setFont('helvetica', 'bold');
+                    doc.text(String(stat.value), xPos + 3, yPos + 9);
+                    doc.setFont('helvetica', 'normal');
+                });
+
+                // Recent Orders
+                yPos += 35;
+                doc.setFontSize(12);
+                doc.setTextColor(0, 0, 0);
+                doc.text('PEDIDOS RECIENTES:', 20, yPos);
+                
+                yPos += 8;
+                const recentOrders = pedidos.slice(0, 5);
+                
+                if (recentOrders.length > 0) {
+                    // Table headers
+                    doc.setFontSize(9);
+                    doc.setFillColor(240, 240, 240);
+                    doc.rect(20, yPos - 5, 170, 8, 'F');
+                    doc.text('ORDEN', 22, yPos);
+                    doc.text('CLIENTE', 55, yPos);
+                    doc.text('TOTAL', 120, yPos);
+                    doc.text('ESTADO', 155, yPos);
+
+                    // Orders rows
+                    yPos += 8;
+                    doc.setFontSize(8);
+                    recentOrders.forEach((order, index) => {
+                        if (yPos > 270) { // New page if needed
+                            doc.addPage();
+                            yPos = 20;
+                        }
+                        
+                        const orderId = order.id || order.numeroOrden || 'N/A';
+                        const cliente = order.cliente?.nombre || 'N/A';
+                        const total = `$${order.totales?.total?.toFixed(2) || '0.00'}`;
+                        const estado = order.estado || 'pendiente';
+                        
+                        doc.text(orderId.substring(0, 15), 22, yPos);
+                        doc.text(cliente.substring(0, 25), 55, yPos);
+                        doc.text(total, 122, yPos);
+                        doc.text(estado, 157, yPos);
+                        yPos += 6;
+                    });
+                } else {
+                    doc.setFontSize(9);
+                    doc.setTextColor(150, 150, 150);
+                    doc.text('No hay pedidos recientes', 22, yPos);
+                    yPos += 6;
+                }
+
+                // Top Products
+                yPos += 15;
+                if (yPos > 250) {
+                    doc.addPage();
+                    yPos = 20;
+                }
+                
+                doc.setFontSize(12);
+                doc.setTextColor(0, 0, 0);
+                doc.text('PRODUCTOS MÁS VENDIDOS:', 20, yPos);
+                
+                yPos += 8;
+                
+                // Calculate top products from orders
+                const productSales = {};
+                pedidos.forEach(order => {
+                    if (order.productos && Array.isArray(order.productos)) {
+                        order.productos.forEach(item => {
+                            const key = item.nombre || item.id;
+                            if (!productSales[key]) {
+                                productSales[key] = { nombre: key, cantidad: 0 };
+                            }
+                            productSales[key].cantidad += item.cantidad || 0;
+                        });
+                    }
+                });
+                
+                const topProducts = Object.values(productSales)
+                    .sort((a, b) => b.cantidad - a.cantidad)
+                    .slice(0, 5);
+
+                if (topProducts.length > 0) {
+                    // Table headers
+                    doc.setFontSize(9);
+                    doc.setFillColor(240, 240, 240);
+                    doc.rect(20, yPos - 5, 170, 8, 'F');
+                    doc.text('PRODUCTO', 22, yPos);
+                    doc.text('CANTIDAD VENDIDA', 140, yPos);
+
+                    // Products rows
+                    yPos += 8;
+                    doc.setFontSize(8);
+                    topProducts.forEach((product) => {
+                        if (yPos > 270) {
+                            doc.addPage();
+                            yPos = 20;
+                        }
+                        
+                        const nombre = product.nombre.substring(0, 50);
+                        doc.text(nombre, 22, yPos);
+                        doc.text(String(product.cantidad), 155, yPos);
+                        yPos += 6;
+                    });
+                } else {
+                    doc.setFontSize(9);
+                    doc.setTextColor(150, 150, 150);
+                    doc.text('No hay datos de productos vendidos', 22, yPos);
+                }
+
+                // Footer
+                doc.setFontSize(8);
+                doc.setTextColor(150, 150, 150);
+                const pageCount = doc.internal.getNumberOfPages();
+                for (let i = 1; i <= pageCount; i++) {
+                    doc.setPage(i);
+                    doc.text(`Página ${i} de ${pageCount}`, 20, 285);
+                    doc.text(`Generado el: ${new Date().toLocaleString('es-EC')}`, 120, 285);
+                }
+
+                // Download PDF
+                const fileName = `Dashboard-Tatylu-${new Date().toISOString().split('T')[0]}.pdf`;
+                doc.save(fileName);
+
+                // Show confirmation
+                Swal.fire({
+                    title: '¡PDF Generado!',
+                    text: `Dashboard descargado como: ${fileName}`,
+                    icon: 'success',
+                    timer: 3000
+                });
+
+            } catch (error) {
+                console.error('Error generando PDF del dashboard:', error);
+                Swal.fire({
+                    title: 'Error',
+                    text: 'Hubo un problema generando el PDF del dashboard',
+                    icon: 'error'
+                });
+            }
+        }
         }
 
         function showProducts() {

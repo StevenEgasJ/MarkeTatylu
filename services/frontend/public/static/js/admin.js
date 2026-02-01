@@ -339,6 +339,12 @@ class AdminPanelManager {
 
     // Cargar dashboard con estadísticas
     loadDashboard() {
+        // Check if business server is down
+        if (window.__businessUp === false) {
+            this.showBusinessDownDashboard();
+            return;
+        }
+
         const productos = this.getProducts();
         const usuarios = this.getUsers();
         const pedidos = this.getOrders();
@@ -360,6 +366,35 @@ class AdminPanelManager {
         // Cargar pedidos recientes
         this.loadRecentOrders();
         this.loadTopProducts();
+    }
+
+    // Show dashboard message when business server is down
+    showBusinessDownDashboard() {
+        // Clear dashboard stats
+        document.getElementById('totalProducts').textContent = '-';
+        document.getElementById('totalUsers').textContent = '-';
+        document.getElementById('totalOrders').textContent = '-';
+        document.getElementById('totalSales').textContent = '-';
+        
+        // Show message in recent orders section
+        const recentOrdersContainer = document.getElementById('recentOrders');
+        recentOrdersContainer.innerHTML = `
+            <div class="alert alert-warning mb-0" role="alert">
+                <h5 class="alert-heading"><i class="fa-solid fa-exclamation-triangle me-2"></i>Servidor de Business No Disponible</h5>
+                <p class="mb-0">El servidor de business está temporalmente fuera de servicio. Las estadísticas del dashboard requieren que el servidor de business esté activo.</p>
+                <hr>
+                <p class="mb-0 small">Las funciones CRUD (productos, órdenes, usuarios) siguen disponibles.</p>
+            </div>
+        `;
+        
+        // Show message in top products section
+        const topProductsContainer = document.getElementById('topProducts');
+        topProductsContainer.innerHTML = `
+            <div class="text-center text-muted py-4">
+                <i class="fa-solid fa-server fa-2x mb-2"></i>
+                <p class="small mb-0">Estadísticas no disponibles</p>
+            </div>
+        `;
     }
 
     // Verificar productos con stock bajo
