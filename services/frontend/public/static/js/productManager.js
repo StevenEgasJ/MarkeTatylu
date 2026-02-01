@@ -59,13 +59,13 @@ class ProductManager {
         // Throttle: evitar múltiples llamadas en corto tiempo
         const now = Date.now();
         if (now - this.lastLoadTime < this.loadThrottleMs) {
-            console.log(`⏳ loadProducts está throttled, esperando ${this.loadThrottleMs}ms desde última llamada`);
+            console.debug(`⏳ loadProducts está throttled (${this.loadThrottleMs}ms)`);
             return this.products;
         }
 
         // Evitar llamadas concurrentes
         if (this.loadingPromise) {
-            console.log('⏳ loadProducts ya está en progreso, retornando promise existente');
+            console.debug('⏳ loadProducts ya está en progreso');
             return this.loadingPromise;
         }
 
@@ -76,7 +76,7 @@ class ProductManager {
                 const isFileProtocol = window.location.protocol === 'file:';
                 
                 if (!isFileProtocol && typeof window.api !== 'undefined' && window.api.getProducts) {
-                    console.log('📡 Cargando productos desde el servidor...');
+                    console.debug('📡 loadProducts: intentando sincronizar desde servidor...');
                     const serverProducts = await window.api.getProducts();
                     if (serverProducts && serverProducts.length > 0) {
                         console.log(`✅ ${serverProducts.length} productos cargados desde el servidor`);

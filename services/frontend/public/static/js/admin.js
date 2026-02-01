@@ -900,15 +900,6 @@ class AdminPanelManager {
     // Fetch orders from server and cache in localStorage
     async fetchOrders() {
         try {
-            // Check backend-business availability
-            if (window.api && typeof window.api.pingBusiness === 'function') {
-                const up = await window.api.pingBusiness();
-                if (!up) {
-                    await Swal.fire({ icon: 'error', title: 'Servidor de negocio caído', text: 'El servidor de negocio está fuera de servicio. No se pueden cargar los pedidos.' });
-                    return [];
-                }
-            }
-
             let orders = null;
             if (window.api && typeof window.api.getOrders === 'function') {
                 orders = await window.api.getOrders();
