@@ -1096,6 +1096,15 @@ class AdminPanelManager {
             if (result.isConfirmed) {
                 Swal.fire({ title: 'Eliminando usuario...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
                 try {
+                    // Validate CRUD server availability
+                    const crudUp = (window.api && typeof window.api.pingCrud === 'function')
+                        ? await window.api.pingCrud()
+                        : await (async () => { try { const res = await fetch('/api/health/crud', { method: 'GET' }); return res.ok; } catch (_) { return false; } })();
+                    if (!crudUp) {
+                        Swal.fire({ icon: 'error', title: 'Servidor CRUD caído', text: 'El servidor CRUD está fuera de servicio. No se puede eliminar el usuario.' });
+                        return;
+                    }
+
                     const token = getAuthToken();
                     const headers = { 'Content-Type': 'application/json' };
                     if (token) headers['Authorization'] = `Bearer ${token}`;
@@ -1178,6 +1187,15 @@ class AdminPanelManager {
     // Update user (attempt server PUT, fallback to localStorage)
     async updateUser(userData) {
         try {
+            // Validate CRUD server availability
+            const crudUp = (window.api && typeof window.api.pingCrud === 'function')
+                ? await window.api.pingCrud()
+                : await (async () => { try { const res = await fetch('/api/health/crud', { method: 'GET' }); return res.ok; } catch (_) { return false; } })();
+            if (!crudUp) {
+                Swal.fire({ icon: 'error', title: 'Servidor CRUD caído', text: 'El servidor CRUD está fuera de servicio. No se puede actualizar el usuario.' });
+                return;
+            }
+
             const id = userData.id || userData._id || document.getElementById('editUserId').value;
             if (!id) throw new Error('Missing user id');
 
@@ -1449,6 +1467,15 @@ class AdminPanelManager {
         (async () => {
             Swal.fire({ title: 'Actualizando estado...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
             try {
+                // Validate CRUD server availability
+                const crudUp = (window.api && typeof window.api.pingCrud === 'function')
+                    ? await window.api.pingCrud()
+                    : await (async () => { try { const res = await fetch('/api/health/crud', { method: 'GET' }); return res.ok; } catch (_) { return false; } })();
+                if (!crudUp) {
+                    Swal.fire({ icon: 'error', title: 'Servidor CRUD caído', text: 'El servidor CRUD está fuera de servicio. No se puede actualizar el estado del pedido.' });
+                    return;
+                }
+
                 if (window.api && typeof window.api.updateOrder === 'function') {
                     await window.api.updateOrder(orderId, { estado: newStatus });
                     await this.loadServerData();
@@ -1477,6 +1504,15 @@ class AdminPanelManager {
                 (async () => {
                     Swal.fire({ title: 'Eliminando pedido...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
                     try {
+                        // Validate CRUD server availability
+                        const crudUp = (window.api && typeof window.api.pingCrud === 'function')
+                            ? await window.api.pingCrud()
+                            : await (async () => { try { const res = await fetch('/api/health/crud', { method: 'GET' }); return res.ok; } catch (_) { return false; } })();
+                        if (!crudUp) {
+                            Swal.fire({ icon: 'error', title: 'Servidor CRUD caído', text: 'El servidor CRUD está fuera de servicio. No se puede eliminar el pedido.' });
+                            return;
+                        }
+
                         if (window.api && typeof window.api.deleteOrder === 'function') {
                             await window.api.deleteOrder(orderId);
                             await this.loadServerData();

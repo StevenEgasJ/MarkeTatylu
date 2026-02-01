@@ -11,7 +11,13 @@
   const API_PREFIX = apiBaseRoot ? (apiBaseRoot + '/api') : '/api';
 
   function getToken(){
-    return localStorage.getItem('token');
+    // Prefer sessionStorage (volatile/session-scoped) over localStorage (persistent)
+    // This is especially important for admin tokens which should not persist across sessions
+    try {
+      return sessionStorage.getItem('token') || localStorage.getItem('token');
+    } catch (e) {
+      return localStorage.getItem('token');
+    }
   }
 
   async function apiFetch(path, options = {}){

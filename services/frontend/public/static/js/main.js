@@ -373,7 +373,29 @@ function loadProductsFromManager() {
         if (productContainer) {
             productContainer.innerHTML = '';
             
-            if (products.length === 0) {
+            // Check CRUD server availability before displaying products
+            (async () => {
+                const crudUp = (window.api && typeof window.api.pingCrud === 'function')
+                    ? await window.api.pingCrud()
+                    : await (async () => { try { const res = await fetch('/api/health/crud', { method: 'GET' }); return res.ok; } catch (_) { return false; } })();
+                
+                if (!crudUp) {
+                    productContainer.innerHTML = `
+                        <div class="col-12 text-center py-5">
+                            <div class="alert alert-danger">
+                                <i class="fa-solid fa-server fa-3x mb-3"></i>
+                                <h4>No se pueden mostrar los productos</h4>
+                                <p>El servidor CRUD está fuera de servicio. Por favor, intenta más tarde.</p>
+                                <button class="btn btn-primary" onclick="loadProductsFromManager()">
+                                    <i class="fa-solid fa-refresh me-2"></i>Intentar de nuevo
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                    return;
+                }
+
+                if (products.length === 0) {
                 productContainer.innerHTML = `
                     <div class="col-12 text-center py-5">
                         <div class="alert alert-info">
@@ -444,7 +466,8 @@ function loadProductsFromManager() {
                 console.log('✅ Productos renderizados en el contenedor');
                 // RAIL: single summary report for products section (avoid per-product clutter)
                 try { if (window.rail && window.rail.metrics) window.rail.metrics.report({ section: 'products', action: 'render_complete', itemCount: products.length }); } catch(e){};
-            }
+                }
+            })();
         } else {
             console.log('❌ Contenedor products-container no encontrado');
         }
