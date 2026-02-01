@@ -2407,11 +2407,6 @@ function saveProduct() {
         }
         
         console.log('Product saved successfully'); // Debug
-        
-        // Forzar sincronización completa
-        if (typeof forceSync === 'function') {
-            forceSync();
-        }
         })();
     } catch (error) {
         console.error('Error saving product:', error);
