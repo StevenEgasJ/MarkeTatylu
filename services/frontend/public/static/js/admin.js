@@ -2024,6 +2024,23 @@ document.addEventListener('DOMContentLoaded', () => {
                     payload.emails = emails;
                 }
 
+                // Validate business backend availability before sending promotions
+                const businessUp = (window.api && typeof window.api.pingBusiness === 'function')
+                    ? await window.api.pingBusiness()
+                    : await (async () => {
+                        try {
+                            const res = await fetch('/api/health/business', { method: 'GET' });
+                            return res.ok;
+                        } catch (_) {
+                            return false;
+                        }
+                    })();
+                if (!businessUp) {
+                    Swal.fire('Servidor de business caído', 'El servidor de business está fuera de servicio. No se puede enviar la promoción.', 'error');
+                    btn.disabled = false;
+                    return;
+                }
+
                 Swal.fire({ title: 'Enviando promociones...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
                 const res = await fetch('/api/admin/send-promo', {
                     method: 'POST',
@@ -2223,6 +2240,26 @@ function saveProduct() {
             return;
         }
         
+        // Validar que CRUD backend está disponible antes de guardar
+        (async () => {
+          const pingCrud = async () => {
+            try {
+              const res = await fetch('/api/health/crud', { method: 'GET' });
+              return res.ok;
+            } catch (_) {
+              return false;
+            }
+          };
+          
+          const crudUp = (window.api && typeof window.api.pingCrud === 'function')
+            ? await window.api.pingCrud()
+            : await pingCrud();
+          
+          if (!crudUp) {
+            Swal.fire('Servidor CRUD caído', 'El servidor CRUD está caído. No se puede guardar el producto.', 'error');
+            return;
+          }
+        
         // Verificar que todos los campos existen
         const nameField = document.getElementById('productName');
         const priceField = document.getElementById('productPrice');
@@ -2296,7 +2333,7 @@ function saveProduct() {
         if (typeof forceSync === 'function') {
             forceSync();
         }
-        
+        })();
     } catch (error) {
         console.error('Error saving product:', error);
         Swal.fire({

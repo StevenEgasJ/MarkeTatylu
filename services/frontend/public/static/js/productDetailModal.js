@@ -47,6 +47,26 @@
       if (modalForm) {
         modalForm.onsubmit = async function(e){
           e.preventDefault();
+          
+          // Validar que business backend está disponible
+          const pingBusiness = async () => {
+            try {
+              const res = await fetch('/api/health/business', { method: 'GET' });
+              return res.ok;
+            } catch (_) {
+              return false;
+            }
+          };
+          
+          const businessUp = (window.api && typeof window.api.pingBusiness === 'function')
+            ? await window.api.pingBusiness()
+            : await pingBusiness();
+          
+          if (!businessUp) {
+            Swal.fire('Servidor caído', 'El servidor de business está caído. No se puede enviar la reseña.', 'error');
+            return;
+          }
+          
           const name = qs('modalReviewName').value.trim();
           const email = qs('modalReviewEmail').value.trim();
           const rating = Number(qs('modalReviewRating').value) || 5;

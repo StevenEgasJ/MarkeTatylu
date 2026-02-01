@@ -5,6 +5,9 @@
 class ProductManager {
     constructor() {
         this.products = [];
+        this.loadingPromise = null; // Para evitar llamadas concurrentes
+        this.lastLoadTime = 0; // Para throttle
+        this.loadThrottleMs = 5000; // Mínimo 5 segundos entre loads
         this.loadProductsSync(); // Cargar inmediatamente desde localStorage de forma síncrona
         this.loadProducts(); // Luego intentar actualizar desde servidor de forma asíncrona
     }
@@ -51,60 +54,75 @@ class ProductManager {
         }
     }
 
-    // Cargar productos desde el servidor o localStorage
+    // Cargar productos desde el servidor o localStorage (con throttle para evitar llamadas simultáneas)
     async loadProducts() {
-        try {
-            // MODIFICACIÓN: Solo intentar fetch si NO estamos en file://
-            const isFileProtocol = window.location.protocol === 'file:';
-            
-            if (!isFileProtocol && typeof window.api !== 'undefined' && window.api.getProducts) {
-                console.log('📡 Cargando productos desde el servidor...');
-                const serverProducts = await window.api.getProducts();
-                if (serverProducts && serverProducts.length > 0) {
-                    console.log(`✅ ${serverProducts.length} productos cargados desde el servidor`);
-                    this.products = serverProducts.map(p => {
+        // Throttle: evitar múltiples llamadas en corto tiempo
+        const now = Date.now();
+        if (now - this.lastLoadTime < this.loadThrottleMs) {
+            console.log(`⏳ loadProducts está throttled, esperando ${this.loadThrottleMs}ms desde última llamada`);
+            return this.products;
+        }
+
+        // Evitar llamadas concurrentes
+        if (this.loadingPromise) {
+            console.log('⏳ loadProducts ya está en progreso, retornando promise existente');
+            return this.loadingPromise;
+        }
+
+        this.loadingPromise = (async () => {
+            try {
+                this.lastLoadTime = Date.now();
+                // Solo intentar fetch si NO estamos en file://
+                const isFileProtocol = window.location.protocol === 'file:';
+                
+                if (!isFileProtocol && typeof window.api !== 'undefined' && window.api.getProducts) {
+                    console.log('📡 Cargando productos desde el servidor...');
+                    const serverProducts = await window.api.getProducts();
+                    if (serverProducts && serverProducts.length > 0) {
+                        console.log(`✅ ${serverProducts.length} productos cargados desde el servidor`);
+                        this.products = serverProducts.map(p => {
+                            const stockValue = p.stock !== undefined && p.stock !== null ? Number(p.stock) : 0;
+                            const precioValue = p.precio !== undefined && p.precio !== null ? Number(p.precio) : 0;
+                            // Normalizar id: preferir `id`, si no existe usar `_id` (respuesta de MongoDB)
+                            const idValue = (p.id !== undefined && p.id !== null) ? String(p.id) : (p._id ? String(p._id) : undefined);
+                            return {
+                                ...p,
+                                id: idValue,
+                                stock: stockValue,
+                                precio: precioValue
+                            };
+                        });
+                        // Actualizar localStorage con los datos del servidor
+                        localStorage.setItem('productos', JSON.stringify(this.products));
+                        return this.products;
+                    }
+                } else if (isFileProtocol) {
+                    console.log('ℹ️ Modo offline (file://), cargando desde localStorage');
+                }
+            } catch (error) {
+                console.warn('⚠️ No se pudieron cargar productos desde el servidor:', error);
+            }
+
+            // Fallback a localStorage
+            try {
+                const stored = localStorage.getItem('productos');
+                if (stored) {
+                    const parsed = JSON.parse(stored);
+                    this.products = parsed.map(p => {
                         const stockValue = p.stock !== undefined && p.stock !== null ? Number(p.stock) : 0;
                         const precioValue = p.precio !== undefined && p.precio !== null ? Number(p.precio) : 0;
-                        // Normalizar id: preferir `id`, si no existe usar `_id` (respuesta de MongoDB)
-                        const idValue = (p.id !== undefined && p.id !== null) ? String(p.id) : (p._id ? String(p._id) : undefined);
                         return {
                             ...p,
-                            id: idValue,
                             stock: stockValue,
                             precio: precioValue
                         };
                     });
-                    // Actualizar localStorage con los datos del servidor
-                    localStorage.setItem('productos', JSON.stringify(this.products));
-                    return this.products;
-                }
-            } else if (isFileProtocol) {
-                console.log('ℹ️ Modo offline (file://), cargando desde localStorage');
-            }
-        } catch (error) {
-            console.warn('⚠️ No se pudieron cargar productos desde el servidor:', error);
-        }
-
-        // Fallback a localStorage
-        try {
-            const stored = localStorage.getItem('productos');
-            if (stored) {
-                const parsed = JSON.parse(stored);
-                this.products = parsed.map(p => {
-                    const stockValue = p.stock !== undefined && p.stock !== null ? Number(p.stock) : 0;
-                    const precioValue = p.precio !== undefined && p.precio !== null ? Number(p.precio) : 0;
-                    return {
-                        ...p,
-                        stock: stockValue,
-                        precio: precioValue
-                    };
-                });
-                console.log(`📦 ${this.products.length} productos cargados desde localStorage`);
-                // Log de algunos productos para debug
-                if (this.products.length > 0) {
-                    console.log('📋 Primeros 3 productos con stock:', 
-                        this.products.slice(0, 3).map(p => ({
-                            id: p.id,
+                    console.log(`📦 ${this.products.length} productos cargados desde localStorage`);
+                    // Log de algunos productos para debug
+                    if (this.products.length > 0) {
+                        console.log('📋 Primeros 3 productos con stock:', 
+                            this.products.slice(0, 3).map(p => ({
+                                id: p.id,
                             nombre: p.nombre,
                             stock: p.stock,
                             stockType: typeof p.stock
@@ -119,8 +137,13 @@ class ProductManager {
             console.error('❌ Error cargando productos desde localStorage:', error);
             this.products = [];
         }
-
+        
         return this.products;
+        })().finally(() => {
+            this.loadingPromise = null; // Limpiar promise después de que termine
+        });
+        
+        return this.loadingPromise;
     }
 
     // Obtener todos los productos (alias para compatibilidad)
@@ -192,6 +215,30 @@ class ProductManager {
     async updateStock(productId, newStock) {
         try {
             console.log(`🔄 Actualizando stock del producto ${productId} a ${newStock}`);
+            
+            // Validar que CRUD backend está disponible
+            const pingCrud = async () => {
+              try {
+                const res = await fetch('/api/health/crud', { method: 'GET' });
+                return res.ok;
+              } catch (_) {
+                return false;
+              }
+            };
+            
+            const crudUp = (window.api && typeof window.api.pingCrud === 'function')
+              ? await window.api.pingCrud()
+              : await pingCrud();
+            
+            if (!crudUp) {
+              const msg = 'El servidor CRUD está caído. No se puede actualizar el stock.';
+              if (typeof Swal !== 'undefined') {
+                Swal.fire('Servidor CRUD caído', msg, 'error');
+              } else {
+                alert(msg);
+              }
+              return false;
+            }
             
             // Actualizar en memoria
             const index = this.products.findIndex(p => String(p.id) === String(productId));

@@ -348,8 +348,9 @@ function loadProductsFromManager() {
     console.log('📦 Cargando productos desde productManager...');
     
     if (typeof productManager !== 'undefined') {
-        // Forzar recarga de productos
-        productManager.syncWithAdminProducts();
+        // Solo mostrar productos del cache local, no llamar API
+        // (loadProducts throttling maneja syncs de servidor)
+        // productManager.syncWithAdminProducts(); // DISABLED - para evitar llamadas repetidas
         
     let products = productManager.getAllProducts();
         console.log('📋 Productos obtenidos:', products.length);
@@ -784,12 +785,6 @@ async function agregarAlCarrito(id, nombre, precio, imagen, mililitros) {
     console.log('🛒 agregarAlCarrito called with:', { id, nombre, precio, tipo: typeof id });
     // NOTE: Allow adding to cart even when not logged in. Login will be enforced at checkout.
 
-    const ok = await ensureBackendAvailable({ requireBusiness: true, requireCrud: true, context: 'carrito' });
-    if (!ok) {
-        try { if (window.rail && window.rail.metrics) window.rail.metrics.markButtonClickEnd('addToCart:'+id); } catch(e){}
-        return;
-    }
-
     // Verificar stock disponible usando productManager
     if (typeof productManager !== 'undefined' && typeof productManager.checkStockAvailability === 'function') {
         // Asegurar que los productos estén sincronizados
@@ -912,9 +907,6 @@ function updateCartCount() {
 }
 
 async function cargarCarrito() {
-    const ok = await ensureBackendAvailable({ requireBusiness: true, requireCrud: true, context: 'carrito' });
-    if (!ok) return;
-
     // Mostrar un banner si el usuario no está logueado, pero seguir renderizando el carrito
     const guestMode = localStorage.getItem('userLoggedIn') !== 'true';
     let carrito = JSON.parse(localStorage.getItem("carrito")) || [];
