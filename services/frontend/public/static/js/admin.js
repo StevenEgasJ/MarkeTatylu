@@ -343,11 +343,28 @@ class AdminPanelManager {
         });
         if (lowStockProducts.length === 0) return;
 
-        // Desactivar alerta si no tenemos confirmación previa de servidores activos
-        // (evita llamar health endpoints al abrir el admin)
-        if (window.__businessUp !== true || window.__crudUp !== true) {
-            return;
-        }
+        // Desactivar alerta si los servidores no están disponibles.
+        // Verificar en silencio para evitar alertas cuando business/crud estén caídos.
+        if (window.__businessUp === false || window.__crudUp === false) return;
+
+        const pingUrl = async (url) => {
+            try {
+                const res = await fetch(url, { method: 'GET' });
+                return res.ok;
+            } catch (_) {
+                return false;
+            }
+        };
+
+        const businessUp = (window.api && typeof window.api.pingBusiness === 'function')
+            ? await window.api.pingBusiness()
+            : await pingUrl('/api/health/business');
+        if (!businessUp) return;
+
+        const crudUp = (window.api && typeof window.api.pingCrud === 'function')
+            ? await window.api.pingCrud()
+            : await pingUrl('/api/health/crud');
+        if (!crudUp) return;
 
         const lowStockList = lowStockProducts.map(product => {
             const stock = Number(product.stock) || 0;
