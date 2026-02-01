@@ -58,6 +58,8 @@ app.use('/', require('./routes/public'));
 // Health endpoints (support both root /health and proxied /api/health)
 app.get('/health', (req, res) => res.json({ status: 'ok', service: 'backend-crud' }));
 app.get('/api/health', (req, res) => res.json({ status: 'ok', service: 'backend-crud' }));
+app.get('/health/crud', (req, res) => res.json({ status: 'ok', service: 'backend-crud' }));
+app.get('/api/health/crud', (req, res) => res.json({ status: 'ok', service: 'backend-crud' }));
 
 // Seed default products and admin user (dev convenience)
 const Product = require('./models/Product');
