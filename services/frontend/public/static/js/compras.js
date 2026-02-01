@@ -35,6 +35,15 @@ async function cancelOrder(orderId) {
 
         if (!isConfirmed) return;
 
+        // Ensure backend-business is available
+        if (window.api && typeof window.api.pingBusiness === 'function') {
+            const up = await window.api.pingBusiness();
+            if (!up) {
+                await Swal.fire({ icon: 'error', title: 'Servidor de negocio caído', text: 'El servidor de negocio está caído. No se puede cancelar el pedido en este momento.' });
+                return;
+            }
+        }
+
         const response = await fetch(`/api/orders/${orderId}/cancelar`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },

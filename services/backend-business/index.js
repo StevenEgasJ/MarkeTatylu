@@ -37,6 +37,8 @@ app.use('/api/admin', require('./routes/admin'));
 app.use('/api/debug', require('./routes/debug'));
 
 app.get('/health', (req, res) => res.json({ status: 'ok', service: 'backend-business' }));
+// Also support proxied health path under /api/health for frontend checks
+app.get('/api/health', (req, res) => res.json({ status: 'ok', service: 'backend-business' }));
 
 mongoose.connection.once('connected', () => {
   (async () => {

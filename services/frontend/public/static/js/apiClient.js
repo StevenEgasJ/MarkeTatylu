@@ -112,6 +112,25 @@
       } catch (err) {
         return false;
       }
+    },
+
+    // Ping specific backends: business and crud (proxied paths)
+    pingBusiness: async () => {
+      try {
+        const res = await fetch(API_PREFIX + '/health/business', { method: 'GET' });
+        return res.ok;
+      } catch (err) {
+        return false;
+      }
+    },
+
+    pingCrud: async () => {
+      try {
+        const res = await fetch(API_PREFIX + '/health/crud', { method: 'GET' });
+        return res.ok;
+      } catch (err) {
+        return false;
+      }
     }
   };
 })(window);

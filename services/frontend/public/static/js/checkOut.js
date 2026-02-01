@@ -6,6 +6,16 @@ document.addEventListener('DOMContentLoaded', () => {
     // Cargar datos del carrito
     const loadCart = async() => {
         try {
+            // Check that the CRUD backend is available
+            if (window.api && typeof window.api.pingCrud === 'function') {
+                const up = await window.api.pingCrud();
+                if (!up) {
+                    await Swal.fire({ icon: 'error', title: 'Servidor caído', text: 'El servidor de datos (CRUD) está caído. No se puede cargar el carrito.' });
+                    window.location.href = '/cart';
+                    return;
+                }
+            }
+
             const response = await fetch(`/api/cart/${cartId}`);
             const cart = await response.json();
 
@@ -15,7 +25,7 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('subtotal').textContent = `$${cart.total.toFixed(2)}`;
             document.getElementById('total').textContent = `$${(cart.total + 3).toFixed(2)}`;
         } catch (error) {
-            alert(`Error: ${error.message}`);
+            await Swal.fire({ icon: 'error', title: 'Error', text: error.message || 'No se pudo cargar el carrito.' });
             window.location.href = '/cart';
         }
     };
@@ -55,6 +65,15 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!cartId || !addressId) {
                 alert('Primero guarda tu dirección');
                 return;
+            }
+
+            // Check that the business backend is available before finalizing
+            if (window.api && typeof window.api.pingBusiness === 'function') {
+                const up = await window.api.pingBusiness();
+                if (!up) {
+                    await Swal.fire({ icon: 'error', title: 'Servidor de negocio caído', text: 'El servidor de negocio está caído. No se puede procesar el pedido en este momento.' });
+                    return;
+                }
             }
 
             const response = await fetch('/api/orders', {
