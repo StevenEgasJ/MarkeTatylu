@@ -1,64 +1,55 @@
 services:
-  - type: "web"
-    name: "market-tatylu-frontend"
-    env: "docker"
-    repo: "StevenEgasJ/MarketTatylu"
-    branch: "main"
-    dockerfilePath: "services/frontend/Dockerfile"
+  - type: web
+    name: market-tatylu-frontend
+    env: docker
+    repo: StevenEgasJ/MarketTatylu
+    branch: main
+    dockerfilePath: services/frontend/Dockerfile
     autoDeploy: true
-    plan: "free"
-    instanceType: "starter"
-    healthCheckPath: "/"
+    plan: free
+    healthCheckPath: /
     envVars:
       - key: BACKEND_CRUD_URL
-        value: "https://market-tatylu-backend-crud.onrender.com"
+        value: https://market-tatylu-backend-crud.onrender.com
       - key: BACKEND_BUSINESS_URL
-        value: "https://market-tatylu-backend-business.onrender.com"
+        value: https://market-tatylu-backend-business.onrender.com
 
-  - type: "web"
-    name: "market-tatylu-backend-crud"
-    env: "docker"
-    repo: "StevenEgasJ/MarketTatylu"
-    branch: "main"
-    dockerfilePath: "services/backend-crud/Dockerfile"
+  - type: web
+    name: market-tatylu-backend-crud
+    env: docker
+    repo: StevenEgasJ/MarketTatylu
+    branch: main
+    dockerfilePath: services/backend-crud/Dockerfile
     autoDeploy: true
-    plan: "starter"
-    instanceType: "starter"
-    healthCheckPath: "/health"
+    plan: starter
+    healthCheckPath: /health
     envVars:
       - key: NODE_ENV
-        value: "production"
+        value: production
       - key: PORT
         value: "3001"
-      - key: MONGODB_URI
-        sync: false  # Set this in Render dashboard with your MongoDB Atlas/Render DB connection string
       - key: JWT_SECRET
         generateValue: true
       - key: SESSION_SECRET
         generateValue: true
       - key: CLIENT_URL
-        value: "https://market-tatylu-frontend.onrender.com"
+        value: https://market-tatylu-frontend.onrender.com
 
-  - type: "web"
-    name: "market-tatylu-backend-business"
-    env: "docker"
-    repo: "StevenEgasJ/MarketTatylu"
-    branch: "main"
-    dockerfilePath: "services/backend-business/Dockerfile"
+  - type: web
+    name: market-tatylu-backend-business
+    env: docker
+    repo: StevenEgasJ/MarketTatylu
+    branch: main
+    dockerfilePath: services/backend-business/Dockerfile
     autoDeploy: true
-    plan: "starter"
-    instanceType: "starter"
-    healthCheckPath: "/health"
+    plan: starter
+    healthCheckPath: /health
     envVars:
       - key: NODE_ENV
-        value: "production"
+        value: production
       - key: PORT
         value: "3002"
-      - key: MONGODB_URI
-        sync: false  # Set this in Render dashboard with your MongoDB Atlas/Render DB connection string
-      - key: JWT_SECRET
-        sync: false  # Should match backend-crud JWT_SECRET
       - key: CLIENT_URL
-        value: "https://market-tatylu-frontend.onrender.com"
+        value: https://market-tatylu-frontend.onrender.com
       - key: APP_BASE_URL
-        value: "https://market-tatylu-frontend.onrender.com"
+        value: https://market-tatylu-frontend.onrender.com
