@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+  frontend:
+    build:
+      context: .
+      dockerfile: services/frontend/Dockerfile
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend-crud
+      - backend-business
+    restart: unless-stopped
+
+  backend-crud:
+    build: ./services/backend-crud
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=development
+      - MONGODB_URI=mongodb://mongo:27017/markettatylu
+    depends_on:
+      - mongo
+    restart: unless-stopped
+
+  backend-business:
+    build: ./services/backend-business
+    ports:
+      - "3002:3002"
+    environment:
+      - NODE_ENV=development
+      - MONGODB_URI=mongodb://mongo:27017/markettatylu
+    depends_on:
+      - mongo
+    restart: unless-stopped
+
+  mongo:
+    image: mongo:6.0
+    ports:
+      - "27017:27017"
+    volumes:
+      - ./server/mongo-data:/data/db
+    restart: unless-stopped
+
+networks:
+  default:
+    driver: bridge

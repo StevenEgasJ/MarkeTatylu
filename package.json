@@ -1,4 +1,11 @@
 {
+  "name": "market-tatylu-root",
+  "private": true,
+  "scripts": {
+    "dev:compose": "docker compose up --build",
+    "dev:compose:down": "docker compose down",
+    "lint": "echo \"no linter configured\""
+  },
   "dependencies": {
     "@react-oauth/google": "^0.13.4",
     "bcryptjs": "^2.4.3",
