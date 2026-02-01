@@ -142,9 +142,16 @@ document.addEventListener("DOMContentLoaded", async function() {
     if (confirmarBtn) {
         // Mark interactive for metrics
         try { if (window.rail && window.rail.metrics) window.rail.metrics.markButtonInteractive('confirmar-productos'); } catch(e){}
-        confirmarBtn.addEventListener("click", function(event) {
+        confirmarBtn.addEventListener("click", async function(event) {
             // RAIL: mark click start
             try { if (window.rail && window.rail.metrics) window.rail.metrics.markButtonClickStart('confirmar-productos'); } catch(e){}
+
+            const ok = await ensureBackendAvailable({ requireBusiness: true, requireCrud: true, context: 'compra' });
+            if (!ok) {
+                event.preventDefault();
+                try { if (window.rail && window.rail.metrics) window.rail.metrics.markButtonClickEnd('confirmar-productos'); } catch(e){}
+                return;
+            }
 
             // If this is a plain link (<a href="...">), prefer normal navigation
             if (confirmarBtn.tagName === 'A' && confirmarBtn.getAttribute('href')) {
@@ -728,9 +735,60 @@ function showPurchaseHistory() {
 
 // --- FUNCIONES DEL CARRITO - LA PARTE MÁS IMPORTANTE ---
 
+async function ensureBackendAvailable({ requireBusiness = false, requireCrud = false, context = 'carrito' } = {}) {
+    const showMessage = async (title, text) => {
+        try {
+            if (typeof Swal !== 'undefined') {
+                await Swal.fire({ icon: 'error', title, text });
+            } else {
+                alert(title + "\n" + text);
+            }
+        } catch (_) {
+            alert(title + "\n" + text);
+        }
+    };
+
+    const pingUrl = async (url) => {
+        try {
+            const res = await fetch(url, { method: 'GET' });
+            return res.ok;
+        } catch (_) {
+            return false;
+        }
+    };
+
+    if (requireBusiness) {
+        const up = (window.api && typeof window.api.pingBusiness === 'function')
+            ? await window.api.pingBusiness()
+            : await pingUrl('/api/health/business');
+        if (!up) {
+            await showMessage('Servidor de business caído', `El servidor de business está caído. No se puede realizar el proceso de ${context}.`);
+            return false;
+        }
+    }
+
+    if (requireCrud) {
+        const up = (window.api && typeof window.api.pingCrud === 'function')
+            ? await window.api.pingCrud()
+            : await pingUrl('/api/health/crud');
+        if (!up) {
+            await showMessage('Servidor de CRUD caído', `El servidor de CRUD está caído. No se puede realizar el proceso de ${context}.`);
+            return false;
+        }
+    }
+
+    return true;
+}
+
 async function agregarAlCarrito(id, nombre, precio, imagen, mililitros) {
     console.log('🛒 agregarAlCarrito called with:', { id, nombre, precio, tipo: typeof id });
     // NOTE: Allow adding to cart even when not logged in. Login will be enforced at checkout.
+
+    const ok = await ensureBackendAvailable({ requireBusiness: true, requireCrud: true, context: 'carrito' });
+    if (!ok) {
+        try { if (window.rail && window.rail.metrics) window.rail.metrics.markButtonClickEnd('addToCart:'+id); } catch(e){}
+        return;
+    }
 
     // Verificar stock disponible usando productManager
     if (typeof productManager !== 'undefined' && typeof productManager.checkStockAvailability === 'function') {
@@ -853,7 +911,10 @@ function updateCartCount() {
     actualizarCarritoUI();
 }
 
-function cargarCarrito() {
+async function cargarCarrito() {
+    const ok = await ensureBackendAvailable({ requireBusiness: true, requireCrud: true, context: 'carrito' });
+    if (!ok) return;
+
     // Mostrar un banner si el usuario no está logueado, pero seguir renderizando el carrito
     const guestMode = localStorage.getItem('userLoggedIn') !== 'true';
     let carrito = JSON.parse(localStorage.getItem("carrito")) || [];
@@ -940,7 +1001,10 @@ document.addEventListener('change', function(e) {
     }
 });
 
-function actualizarCantidad(index, cambio) {
+async function actualizarCantidad(index, cambio) {
+    const ok = await ensureBackendAvailable({ requireBusiness: true, requireCrud: true, context: 'carrito' });
+    if (!ok) return;
+
     let carrito = JSON.parse(localStorage.getItem("carrito")) || [];
     
     if (carrito[index].cantidad + cambio > 0) {
@@ -984,7 +1048,10 @@ function actualizarCantidad(index, cambio) {
     }
 }
 
-function eliminarDelCarrito(index) {
+async function eliminarDelCarrito(index) {
+    const ok = await ensureBackendAvailable({ requireBusiness: true, requireCrud: true, context: 'carrito' });
+    if (!ok) return;
+
     let carrito = JSON.parse(localStorage.getItem("carrito")) || [];
     carrito.splice(index, 1);
     localStorage.setItem("carrito", JSON.stringify(carrito));
