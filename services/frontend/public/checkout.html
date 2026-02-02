@@ -50,8 +50,15 @@
     /* Hide Swal2 toast containers only on this page - but allow normal popups */
     .swal2-container.swal2-top-end { display: none !important; }
     .swal2-container .swal2-toast { display: none !important; }
-    /* Ensure normal modals (center position) are visible */
-    .swal2-container.swal2-center { display: flex !important; }
+    /* Ensure normal modals (center position) are visible and centered */
+    .swal2-container.swal2-center { 
+      display: flex !important; 
+      align-items: center !important;
+      justify-content: center !important;
+    }
+    .swal2-center-modal {
+      margin: auto !important;
+    }
   </style>
 </head>
 <body>

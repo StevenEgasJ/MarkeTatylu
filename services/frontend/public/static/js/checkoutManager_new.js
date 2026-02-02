@@ -754,6 +754,10 @@ async function showFinalInvoice(order) {
         cancelButtonColor: '#007bff',
         denyButtonColor: '#6c757d',
         width: '800px',
+        customClass: {
+            container: 'swal2-center',
+            popup: 'swal2-center-modal'
+        },
         allowOutsideClick: false,
         preConfirm: () => {
             try {

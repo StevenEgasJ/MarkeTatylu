@@ -1151,16 +1151,32 @@ function wirePageEvents(){
         const totalAmount = adjustedTotals.total || 0;
         const orderId = order.id || order.numeroOrden;
         
+        console.log('🎯 Intentando otorgar puntos:', { userEmail, totalAmount, orderId, hasLoyaltyManager: typeof loyaltyManager !== 'undefined' });
+        
         if (userEmail && totalAmount > 0 && typeof loyaltyManager !== 'undefined') {
-          const loyaltyResult = loyaltyManager.addPointsForPurchase(userEmail, totalAmount, orderId);
-          
-          if (loyaltyResult.success && loyaltyResult.points > 0) {
-            console.log('✅ Puntos de lealtad otorgados:', loyaltyResult);
-            loyaltyPointsEarned = loyaltyResult.points;
+          // Verificar si ya otorgamos puntos para esta orden
+          const processedOrders = JSON.parse(localStorage.getItem('loyaltyProcessedOrders') || '[]');
+          if (processedOrders.includes(orderId)) {
+            console.log('⚠️ Puntos ya otorgados para esta orden, saltando...');
+          } else {
+            const loyaltyResult = loyaltyManager.addPointsForPurchase(userEmail, totalAmount, orderId);
+            
+            if (loyaltyResult.success && loyaltyResult.points > 0) {
+              console.log('✅ Puntos de lealtad otorgados:', loyaltyResult);
+              loyaltyPointsEarned = loyaltyResult.points;
+              
+              // Marcar orden como procesada
+              processedOrders.push(orderId);
+              localStorage.setItem('loyaltyProcessedOrders', JSON.stringify(processedOrders));
+            } else {
+              console.log('❌ No se otorgaron puntos:', loyaltyResult);
+            }
           }
+        } else {
+          console.log('❌ Requisitos no cumplidos para puntos');
         }
       } catch (err) {
-        console.warn('No se pudieron otorgar puntos de lealtad:', err);
+        console.error('❌ Error al otorgar puntos de lealtad:', err);
       }
       
       try { await window.showInvoiceSingleton(order); } catch(e){}
@@ -1169,7 +1185,9 @@ function wirePageEvents(){
       
       // Mostrar notificación de puntos DESPUÉS de la factura
       if (loyaltyPointsEarned && loyaltyPointsEarned > 0) {
+        console.log('🎉 Preparando notificación de puntos:', loyaltyPointsEarned);
         setTimeout(() => {
+          console.log('🎉 Mostrando notificación de puntos...');
           Swal.fire({
             title: '🎉 ¡Felicidades!',
             html: `
@@ -1181,13 +1199,19 @@ function wirePageEvents(){
             confirmButtonColor: '#28a745',
             showCancelButton: true,
             cancelButtonText: 'Cerrar',
-            allowOutsideClick: false
+            allowOutsideClick: false,
+            customClass: {
+              container: 'swal2-center'
+            }
           }).then((result) => {
+            console.log('Usuario interactuó con notificación:', result);
             if (result.isConfirmed) {
               window.location.href = 'profile.html';
             }
           });
         }, 800);
+      } else {
+        console.log('⚠️ No se mostrará notificación, puntos ganados:', loyaltyPointsEarned);
       }
       
       // DO NOT redirect automatically — keep user on the checkout page so they can choose options
@@ -1214,26 +1238,32 @@ function wirePageEvents(){
     const totalAmount = adjustedTotals.total || 0;
     const orderId = order.id || order.numeroOrden;
     
+    console.log('🎯 Intentando otorgar puntos (local):', { userEmail, totalAmount, orderId, hasLoyaltyManager: typeof loyaltyManager !== 'undefined' });
+    
     if (userEmail && totalAmount > 0 && typeof loyaltyManager !== 'undefined') {
-      const loyaltyResult = loyaltyManager.addPointsForPurchase(userEmail, totalAmount, orderId);
-      
-      if (loyaltyResult.success && loyaltyResult.points > 0) {
-        console.log('✅ Puntos de lealtad otorgados:', loyaltyResult);
-        loyaltyPointsEarned = loyaltyResult.points;
+      // Verificar si ya otorgamos puntos para esta orden
+      const processedOrders = JSON.parse(localStorage.getItem('loyaltyProcessedOrders') || '[]');
+      if (processedOrders.includes(orderId)) {
+        console.log('⚠️ Puntos ya otorgados para esta orden, saltando...');
+      } else {
+        const loyaltyResult = loyaltyManager.addPointsForPurchase(userEmail, totalAmount, orderId);
+        
+        if (loyaltyResult.success && loyaltyResult.points > 0) {
+          console.log('✅ Puntos de lealtad otorgados:', loyaltyResult);
+          loyaltyPointsEarned = loyaltyResult.points;
+          
+          // Marcar orden como procesada
+          processedOrders.push(orderId);
+          localStorage.setItem('loyaltyProcessedOrders', JSON.stringify(processedOrders));
+        } else {
+          console.log('❌ No se otorgaron puntos:', loyaltyResult);
+        }
       }
+    } else {
+      console.log('❌ Requisitos no cumplidos para puntos');
     }
   } catch (err) {
-    console.warn('No se pudieron otorgar puntos de lealtad:', err);
-  }
-  
-  localStorage.removeItem('carrito');
-  if(typeof actualizarCarritoUI === 'function') actualizarCarritoUI();
-
-  await window.showInvoiceSingleton(order);
-
-  // Mostrar notificación de puntos DESPUÉS de la factura
-  if (loyaltyPointsEarned && loyaltyPointsEarned > 0) {
-    setTimeout(() => {
+    console.error('❌ Error al otorgar puntos de lealtad:', err);
       Swal.fire({
         title: '🎉 ¡Felicidades!',
         html: `
