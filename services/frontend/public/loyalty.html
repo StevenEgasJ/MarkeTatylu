@@ -203,8 +203,8 @@
                             </div>
                             <div class="card-body">
                                 <div class="mb-3">
-                                    <strong>Multiplicador de puntos:</strong>
-                                    <span class="badge bg-success ms-2" id="multiplierBadge">x1</span>
+                                    <strong>Puntos por compra:</strong>
+                                    <span class="badge bg-success ms-2" id="multiplierBadge">50/100/200</span>
                                 </div>
                                 <ul class="list-unstyled" id="perksList">
                                     <li><i class="fa-solid fa-check text-success me-2"></i>Acumula puntos en cada compra</li>
@@ -260,7 +260,7 @@
                                     <div class="card-body">
                                         <i class="fa-solid fa-shopping-bag fa-3x text-primary mb-3"></i>
                                         <h6>Compra en la tienda</h6>
-                                        <p class="text-muted small">Gana 1 punto por cada $10 gastados</p>
+                                        <p class="text-muted small">$0-$10: 50 pts · $10-$50: 100 pts · $50+: 200 pts</p>
                                     </div>
                                 </div>
                             </div>
@@ -378,12 +378,12 @@
             tierBadge.textContent = summary.tierName;
             tierBadge.className = `tier-badge tier-${summary.tier}`;
             
-            // Multiplicador
-            document.getElementById('multiplierBadge').textContent = `x${summary.multiplier}`;
+            // Puntos por compra (rangos fijos)
+            document.getElementById('multiplierBadge').textContent = '50/100/200';
             
             // Beneficios
             const perksList = document.getElementById('perksList');
-            perksList.innerHTML = '<li><i class="fa-solid fa-check text-success me-2"></i>Acumula puntos en cada compra</li>';
+            perksList.innerHTML = '<li><i class="fa-solid fa-check text-success me-2"></i>$0-$10: 50 pts · $10-$50: 100 pts · $50+: 200 pts</li>';
             summary.perks.forEach(perk => {
                 perksList.innerHTML += `<li><i class="fa-solid fa-check text-success me-2"></i>${perk}</li>`;
             });

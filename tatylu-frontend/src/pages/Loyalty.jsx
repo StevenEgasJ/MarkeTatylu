@@ -157,7 +157,7 @@ const Loyalty = () => {
             <div className="col-md-6 mb-4">
               <div className="card p-4 h-100">
                 <h5><i className="fas fa-gift me-2"></i>Canjear Puntos</h5>
-                <p className="text-muted">100 puntos = $1.00 de descuento</p>
+                <p className="text-muted">100 puntos = $10.00 de descuento</p>
 
                 <div className="mb-3">
                   <label className="form-label">Puntos a canjear</label>
@@ -195,7 +195,7 @@ const Loyalty = () => {
                 <ul className="list-unstyled mt-3">
                   <li className="mb-2">
                     <i className="fas fa-check text-success me-2"></i>
-                    1 punto por cada $1 gastado
+                    $0-$10: 50 pts · $10-$50: 100 pts · $50+: 200 pts
                   </li>
                   <li className="mb-2">
                     <i className="fas fa-check text-success me-2"></i>

@@ -1830,10 +1830,9 @@ if (typeof window.checkoutManager !== 'undefined' && window.checkoutManager) {
                                 title: '🎉 ¡Puntos Ganados!',
                                 html: `
                                     <p>Has ganado <strong>${loyaltyResult.points} puntos</strong></p>
-                                    <p>Multiplicador ${loyaltyResult.tierName}: <span class="badge bg-success">x${loyaltyResult.multiplier}</span></p>
                                     <hr>
                                     <p>Total de puntos: <strong>${loyaltyResult.totalPoints}</strong></p>
-                                    <a href="loyalty.html" class="btn btn-primary btn-sm mt-2">Ver mi programa de lealtad</a>
+                                    <a href="profile.html" class="btn btn-primary btn-sm mt-2">Ver mi perfil</a>
                                 `,
                                 icon: 'success',
                                 timer: 5000,

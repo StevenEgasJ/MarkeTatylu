@@ -79,14 +79,22 @@ class LoyaltyManager {
     }
 
     // Calcular puntos ganados por una compra
+    // Reglas: $0-$10 => 50 pts, $10-$50 => 100 pts, $50+ => 200 pts
     calculatePointsEarned(purchaseAmount) {
-        if (purchaseAmount < this.config.minPurchaseForPoints) {
+        const amount = Number(purchaseAmount) || 0;
+        if (amount <= 0) {
             return 0;
         }
-        
-        // 1 punto por cada $10 gastados (0.1 puntos por dólar)
-        const basePoints = Math.floor(purchaseAmount * this.config.pointsPerDollar);
-        return basePoints;
+
+        if (amount <= 10) {
+            return 50;
+        }
+
+        if (amount <= 50) {
+            return 100;
+        }
+
+        return 200;
     }
 
     // Agregar puntos por compra
@@ -103,10 +111,10 @@ class LoyaltyManager {
             return { success: false, message: 'Compra mínima no alcanzada', points: 0 };
         }
 
-        // Aplicar multiplicador del nivel
+        // Puntos fijos por tramo (sin multiplicador)
         const tier = this.getCurrentTier(loyalty.totalPoints);
-        const multiplier = this.tiers[tier].multiplier;
-        const earnedPoints = Math.floor(basePoints * multiplier);
+        const multiplier = 1;
+        const earnedPoints = basePoints;
 
         // Actualizar datos
         loyalty.points += earnedPoints;
@@ -122,7 +130,7 @@ class LoyaltyManager {
             points: earnedPoints,
             amount: purchaseAmount,
             orderId: orderId,
-            description: `Compra de $${purchaseAmount.toFixed(2)} (x${multiplier} multiplicador)`
+            description: `Compra de $${purchaseAmount.toFixed(2)} (bono de puntos)`
         });
 
         // Actualizar tier si es necesario
