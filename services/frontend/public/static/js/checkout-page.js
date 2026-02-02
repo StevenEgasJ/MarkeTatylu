@@ -1268,6 +1268,11 @@ function wirePageEvents(){
     }
   } catch (err) {
     console.error('❌ Error al otorgar puntos de lealtad:', err);
+  }
+  
+  // Mostrar notificación de puntos después de 800ms
+  if (loyaltyPointsEarned && loyaltyPointsEarned > 0) {
+    setTimeout(() => {
       Swal.fire({
         title: '🎉 ¡Felicidades!',
         html: `
@@ -1286,73 +1291,8 @@ function wirePageEvents(){
         }
       });
     }, 800);
-  function showMissingFieldsNotification(){
-    // First, run the inline field-level validation so fields get red outlines and feedback
-    showValidationErrors();
-    // Then run payment field checks similar to the payment-continue/placeOrder handlers
-    // We only mark fields inline and focus the first invalid one — do NOT show a summary box.
-    // Phone
-    const tel = (document.getElementById('telefono') || {}).value || '';
-    const telDigits = (tel||'').replace(/\D/g,'');
-    if(!telDigits || telDigits.length !== 10) {
-      const el = document.getElementById('telefono'); if(el) markInvalid(el, 'Por favor ingresa teléfono válido (10 dígitos)');
-    }
-
-    // Payment
-    const method = (document.getElementById('metodoPago') || {}).value || '';
-    if(!method){
-      const el = document.getElementById('metodoPago'); if(el) markInvalid(el, 'Por favor selecciona un método de pago');
-    } else if(method === 'tarjeta'){
-      const num = (document.getElementById('numeroTarjeta') || {}).value || '';
-      const date = (document.getElementById('fechaVencimiento') || {}).value || '';
-      const cvv = (document.getElementById('cvv') || {}).value || '';
-      if(!num){ const el = document.getElementById('numeroTarjeta'); if(el) markInvalid(el,'Por favor ingresa número de tarjeta'); }
-      if(!date || !/^\d{2}\/\d{2}$/.test(date)){ const el = document.getElementById('fechaVencimiento'); if(el) markInvalid(el,'Formato MM/AA requerido'); }
-      if(!cvv || !/^\d{3,4}$/.test(cvv)){ const el = document.getElementById('cvv'); if(el) markInvalid(el,'CVV inválido'); }
-    } else if(method === 'paypal'){
-      const em = (document.getElementById('emailPaypal') || {}).value || '';
-      if(!em || !validateEmail(em)){ const el = document.getElementById('emailPaypal'); if(el) markInvalid(el,'Email inválido'); }
-    } else if(method === 'transferencia'){
-      const banco = (document.getElementById('banco') || {}).value || '';
-      const numC = (document.getElementById('numeroCuenta') || {}).value || '';
-      const tit = (document.getElementById('titularCuenta') || {}).value || '';
-      if(!banco){ const el = document.getElementById('banco'); if(el) markInvalid(el,'Selecciona banco'); }
-      if(!numC){ const el = document.getElementById('numeroCuenta'); if(el) markInvalid(el,'Ingresa número de cuenta'); }
-      if(!tit){ const el = document.getElementById('titularCuenta'); if(el) markInvalid(el,'Ingresa titular de la cuenta'); }
-    }
-
-    // Focus the first invalid field and ensure it's scrolled into view.
-    const firstInvalid = document.querySelector('.is-invalid');
-    if (firstInvalid) {
-      try {
-        // If the invalid field is inside one of the accordion collapse panels,
-        // ensure that panel is opened so the field is visible before focusing.
-        const collapseEl = firstInvalid.closest('#collapseOne, #collapseTwo, #collapseThree');
-        if (collapseEl) {
-          try {
-            if (typeof bootstrap !== 'undefined' && bootstrap.Collapse) {
-              // Use Bootstrap Collapse API to show the target panel and hide others
-              ['collapseOne','collapseTwo','collapseThree'].forEach(id=>{
-                const el = document.getElementById(id);
-                if(!el) return;
-                const inst = bootstrap.Collapse.getOrCreateInstance(el);
-                if (el === collapseEl) inst.show(); else inst.hide();
-              });
-            } else {
-              // Fallback: toggle 'show' class directly
-              ['collapseOne','collapseTwo','collapseThree'].forEach(id=>{
-                const el = document.getElementById(id);
-                if(!el) return;
-                if (el === collapseEl) el.classList.add('show'); else el.classList.remove('show');
-              });
-            }
-          } catch(e) { /* ignore collapse errors */ }
-        }
-        // Small timeout to allow expand animation to complete before scrolling/focusing
-        setTimeout(()=>{ try { firstInvalid.scrollIntoView({ behavior: 'smooth', block: 'center' }); firstInvalid.focus(); } catch(e){} }, 120);
-      } catch(e){}
-    }
   }
+  }  // Close handlePlaceOrder
 
   // Intercept interactions on the wrapper so clicking the (disabled) button area
   // always runs the inline validation (same behavior as the "Continuar" flow)
@@ -1396,6 +1336,74 @@ function wirePageEvents(){
   document.getElementById('checkout-cancel').addEventListener('click', ()=>{
     window.location.href = 'cart.html';
   });
+}
+
+function showMissingFieldsNotification(){
+  // First, run the inline field-level validation so fields get red outlines and feedback
+  showValidationErrors();
+  // Then run payment field checks similar to the payment-continue/placeOrder handlers
+  // We only mark fields inline and focus the first invalid one — do NOT show a summary box.
+  // Phone
+  const tel = (document.getElementById('telefono') || {}).value || '';
+  const telDigits = (tel||'').replace(/\D/g,'');
+  if(!telDigits || telDigits.length !== 10) {
+    const el = document.getElementById('telefono'); if(el) markInvalid(el, 'Por favor ingresa teléfono válido (10 dígitos)');
+  }
+
+  // Payment
+  const method = (document.getElementById('metodoPago') || {}).value || '';
+  if(!method){
+    const el = document.getElementById('metodoPago'); if(el) markInvalid(el, 'Por favor selecciona un método de pago');
+  } else if(method === 'tarjeta'){
+    const num = (document.getElementById('numeroTarjeta') || {}).value || '';
+    const date = (document.getElementById('fechaVencimiento') || {}).value || '';
+    const cvv = (document.getElementById('cvv') || {}).value || '';
+    if(!num){ const el = document.getElementById('numeroTarjeta'); if(el) markInvalid(el,'Por favor ingresa número de tarjeta'); }
+    if(!date || !/^\d{2}\/\d{2}$/.test(date)){ const el = document.getElementById('fechaVencimiento'); if(el) markInvalid(el,'Formato MM/AA requerido'); }
+    if(!cvv || !/^\d{3,4}$/.test(cvv)){ const el = document.getElementById('cvv'); if(el) markInvalid(el,'CVV inválido'); }
+  } else if(method === 'paypal'){
+    const em = (document.getElementById('emailPaypal') || {}).value || '';
+    if(!em || !validateEmail(em)){ const el = document.getElementById('emailPaypal'); if(el) markInvalid(el,'Email inválido'); }
+  } else if(method === 'transferencia'){
+    const banco = (document.getElementById('banco') || {}).value || '';
+    const numC = (document.getElementById('numeroCuenta') || {}).value || '';
+    const tit = (document.getElementById('titularCuenta') || {}).value || '';
+    if(!banco){ const el = document.getElementById('banco'); if(el) markInvalid(el,'Selecciona banco'); }
+    if(!numC){ const el = document.getElementById('numeroCuenta'); if(el) markInvalid(el,'Ingresa número de cuenta'); }
+    if(!tit){ const el = document.getElementById('titularCuenta'); if(el) markInvalid(el,'Ingresa titular de la cuenta'); }
+  }
+
+  // Focus the first invalid field and ensure it's scrolled into view.
+  const firstInvalid = document.querySelector('.is-invalid');
+  if (firstInvalid) {
+    try {
+      // If the invalid field is inside one of the accordion collapse panels,
+      // ensure that panel is opened so the field is visible before focusing.
+      const collapseEl = firstInvalid.closest('#collapseOne, #collapseTwo, #collapseThree');
+      if (collapseEl) {
+        try {
+          if (typeof bootstrap !== 'undefined' && bootstrap.Collapse) {
+            // Use Bootstrap Collapse API to show the target panel and hide others
+            ['collapseOne','collapseTwo','collapseThree'].forEach(id=>{
+              const el = document.getElementById(id);
+              if(!el) return;
+              const inst = bootstrap.Collapse.getOrCreateInstance(el);
+              if (el === collapseEl) inst.show(); else inst.hide();
+            });
+          } else {
+            // Fallback: toggle 'show' class directly
+            ['collapseOne','collapseTwo','collapseThree'].forEach(id=>{
+              const el = document.getElementById(id);
+              if(!el) return;
+              if (el === collapseEl) el.classList.add('show'); else el.classList.remove('show');
+            });
+          }
+        } catch(e) { /* ignore collapse errors */ }
+      }
+      // Small timeout to allow expand animation to complete before scrolling/focusing
+      setTimeout(()=>{ try { firstInvalid.scrollIntoView({ behavior: 'smooth', block: 'center' }); firstInvalid.focus(); } catch(e){} }, 120);
+    } catch(e){}
+  }
 }
 
 function validateEmail(email){ if(!email) return false; return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email); }
