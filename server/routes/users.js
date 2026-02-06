@@ -44,7 +44,7 @@ router.put('/me', authMiddleware, async (req, res) => {
 });
 
 // GET /api/users - list users (no passwords)
-router.get('/', async (req, res) => {
+router.get('/', authMiddleware, async (req, res) => {
   try {
     const users = await User.find().select('-passwordHash').sort({ nombre: 1 }).lean();
     res.json(users);
@@ -55,7 +55,7 @@ router.get('/', async (req, res) => {
 });
 
 // GET /api/users/:id
-router.get('/:id', async (req, res) => {
+router.get('/:id', authMiddleware, async (req, res) => {
   try {
     const user = await User.findById(req.params.id).select('-passwordHash').lean();
     if (!user) return res.status(404).json({ error: 'User not found' });
@@ -67,7 +67,7 @@ router.get('/:id', async (req, res) => {
 });
 
 // PUT /api/users/:id - update user
-router.put('/:id', async (req, res) => {
+router.put('/:id', authMiddleware, async (req, res) => {
   try {
     const update = { ...req.body, fechaModificacion: new Date() };
     // disallow passwordHash update here for safety
@@ -82,7 +82,7 @@ router.put('/:id', async (req, res) => {
 });
 
 // DELETE /api/users/:id
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', authMiddleware, async (req, res) => {
   try {
     const deleted = await User.findByIdAndDelete(req.params.id);
     if (!deleted) return res.status(404).json({ error: 'User not found' });
