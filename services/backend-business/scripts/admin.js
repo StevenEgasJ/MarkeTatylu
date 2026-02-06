@@ -544,27 +544,37 @@ class AdminPanelManager {
     showProducts() {
         const productos = this.getProducts();
         const tbody = document.getElementById('productsTable');
-        
+        if (!tbody) return;
+
         tbody.innerHTML = productos.map(producto => {
             const stock = Number(producto.stock) || 0;
-            const stockBadgeClass = stock === 0 ? 'bg-danger' : 
-                                   stock <= 5 ? 'bg-danger' : 
-                                   stock <= 10 ? 'bg-warning' : 
+            const stockBadgeClass = stock === 0 ? 'bg-danger' :
+                                   stock <= 5 ? 'bg-danger' :
+                                   stock <= 10 ? 'bg-warning' :
                                    'bg-success';
-            
+            const price = Number(producto.precio || producto.price || 0).toFixed(2);
+            const image = escapeHtml(producto.imagen || producto.image || './static/img/producto.png');
+            const name = escapeHtml(producto.nombre || producto.name || '');
+            const category = escapeHtml(this.getCategoryName(producto.categoria || producto.category || ''));
+            const idValue = escapeHtml(producto.id || producto._id || '');
+
             return `
                 <tr>
-        tableBody.innerHTML = projectionSales.map(row => {
-            const orders = ordersMap.get(row.month) || 0;
-            return `
-                <tr>
-                    <td>${escapeHtml(row.month || '-')}</td>
-                    <td>$${Number(row.projectedTotal || 0).toFixed(2)}</td>
-                    <td>${Number(orders || 0)}</td>
-                </tr>
+                    <td>${idValue}</td>
+                    <td>
+                        <img src="${image}" alt="${name}" style="width: 50px; height: 50px; object-fit: cover;" class="rounded">
+                    </td>
+                    <td>${name}</td>
+                    <td>$${price}</td>
+                    <td>${category}</td>
+                    <td>
+                        <span class="badge ${stockBadgeClass}">${stock}</span>
+                    </td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-primary me-2" data-action="edit-product" data-id="${idValue}" title="Editar producto">
                             <i class="fa-solid fa-edit"></i>
                         </button>
-                        <button class="btn btn-sm btn-outline-danger" data-action="delete-product" data-id="${escapeHtml(producto.id)}" title="Eliminar producto">
+                        <button class="btn btn-sm btn-outline-danger" data-action="delete-product" data-id="${idValue}" title="Eliminar producto">
                             <i class="fa-solid fa-trash"></i>
                         </button>
                     </td>
@@ -580,8 +590,6 @@ class AdminPanelManager {
     }
 
     // Obtener nombre de categoría
-        }).join('');
-    }
     getCategoryName(categoria) {
         const categories = {
             'cocina': 'Cocina',
