@@ -18,7 +18,19 @@ process.on('uncaughtException', (err) => {
   console.error('❌ UncaughtException:', err);
 });
 app.use(morgan('tiny'));
-app.use(cors({ origin: process.env.CLIENT_URL || '*', credentials: true }));
+const allowedOrigins = [
+  process.env.CLIENT_URL,
+  process.env.APP_BASE_URL,
+  'https://marketatylu.onrender.com'
+].filter(Boolean);
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) return callback(null, true);
+    return callback(new Error('CORS not allowed'), false);
+  },
+  credentials: true
+}));
 app.use(express.json({ limit: '5mb' }));
 app.set('trust proxy', true);
 
