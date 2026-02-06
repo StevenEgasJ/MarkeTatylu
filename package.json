@@ -3,6 +3,7 @@
   "private": true,
   "scripts": {
     "start": "npm --prefix services/backend-business start",
+    "postinstall": "npm --prefix services/backend-business install --production",
     "dev:compose": "docker compose up --build",
     "dev:compose:down": "docker compose down",
     "lint": "echo \"no linter configured\""
