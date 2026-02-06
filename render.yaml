@@ -10,9 +10,9 @@ services:
     healthCheckPath: /
     envVars:
       - key: BACKEND_CRUD_URL
-        value: https://market-tatylu-backend-crud.onrender.com
+        value: https://marketatylu-1.onrender.com
       - key: BACKEND_BUSINESS_URL
-        value: https://market-tatylu-backend-business.onrender.com
+        value: https://marketatylu-2.onrender.com
 
   - type: web
     name: market-tatylu-backend-crud
@@ -33,7 +33,9 @@ services:
       - key: SESSION_SECRET
         generateValue: true
       - key: CLIENT_URL
-        value: https://market-tatylu-frontend.onrender.com
+        value: https://marketatylu.onrender.com
+      - key: APP_BASE_URL
+        value: https://marketatylu.onrender.com
 
   - type: web
     name: market-tatylu-backend-business
@@ -50,8 +52,8 @@ services:
       - key: PORT
         value: "3002"
       - key: CLIENT_URL
-        value: https://market-tatylu-frontend.onrender.com
+        value: https://marketatylu.onrender.com
       - key: APP_BASE_URL
-        value: https://market-tatylu-frontend.onrender.com
+        value: https://marketatylu.onrender.com
       - key: MONGODB_URI
         value: mongodb+srv://juhuh3001_db_user:Espe123@cluster0.olchaay.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0
