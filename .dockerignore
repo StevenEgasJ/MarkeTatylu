@@ -1,0 +1,13 @@
+**/node_modules
+**/mongo-data
+**/.git
+**/.vscode
+**/.idea
+**/.DS_Store
+services/frontend/public/static/uploads
+services/frontend/public/static/img
+services/frontend/public/static/css
+services/frontend/public/static/js
+Documentation
+postman
+*.log
